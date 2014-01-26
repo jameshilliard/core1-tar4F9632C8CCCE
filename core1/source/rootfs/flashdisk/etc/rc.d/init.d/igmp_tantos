@@ -1,0 +1,67 @@
+#!/bin/sh
+#####################################
+# Latest Updated: 2006/05/26
+#####################################
+
+
+if [ -r /etc/rc.conf ]; then
+    . /etc/rc.conf
+fi
+
+if [ ${ipoption_wan} = DHCPC ]; then
+        WAN=adm1
+elif [ ${ipoption_wan} = FIXED ]; then
+        WAN=adm1
+elif [ ${ipoption_wan} = PPPOE ]; then
+        WAN=ppp0
+elif [ ${ipoption_wan} = PPTP ]; then
+        WAN=ppp0
+elif [ ${ipoption_wan} = L2TP ]; then
+        WAN=ppp0
+else
+        WAN=adm1
+fi
+
+cd /proc
+DEV_SWITCH=`ls | grep tantos`
+cd -
+
+if [ -z "$DEV_SWITCH" ]; then
+    DEV_SWITCH="adm6996"
+fi
+
+start() {
+    echo "PROXY ${IGMP_PROXY_STATUS}" > /proc/$DEV_SWITCH/igmp_control
+    echo "${IGMP_SNOOP_STATUS}" > /proc/$DEV_SWITCH/igmp_control
+
+    if [ ${IGMP_PROXY_STATUS} -eq 1 ]; then
+        echo "quickleave" > /etc/igmpproxy.conf
+        echo "phyint $WAN upstream  ratelimit 0  threshold 1" >> /etc/igmpproxy.conf
+        echo "phyint $lan_interface downstream  ratelimit 0  threshold 1" >> /etc/igmpproxy.conf
+        echo "phyint $wlan_dev_id disabled" >> /etc/igmpproxy.conf
+        /usr/sbin/igmpproxy -c /etc/igmpproxy.conf &
+    fi
+}
+
+stop() {
+    killall igmpproxy
+}
+
+restart() {
+    stop
+    start
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+esac
+
+exit $?

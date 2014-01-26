@@ -1,0 +1,236 @@
+#!/bin/sh
+############################################
+#####   General configure file          ####
+#####   Latest Update: 2006/09/19       ####
+############################################
+
+if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+		. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+cd /proc
+DEV_SWITCH=`ls | grep tantos`
+cd -
+
+if [ -z "$DEV_SWITCH" ]; then
+    DEV_SWITCH="adm6996"
+fi
+
+if [ "$IFX_CONFIG_QOS" = "1" ]; then
+
+if [ $QOS_ENABLE -eq 1 ]; then
+
+######################################
+# QoS Device Priority
+######################################
+#
+# Format:
+# ADD|DEL xx:xx:xx:xx:xx:xx (priority)
+#
+
+#i=0
+#while [ "$i" -ge 0 -a "$i" -lt $DEV_Count ]
+#do
+#	eval DEV_MACADDR='$DEV_MACADDR_'${i}
+#	eval DEV_PRIORITY='$DEV_PRIORITY_'${i}
+#	eval DEV_STAT='$DEV_STAT_'${i}
+#
+#	if [ ${DEV_STAT} -eq 1 ]; then 
+#        echo "ADD ${DEV_MACADDR} ${DEV_PRIORITY}" > /proc/$DEV_SWITCH/device_control
+#    else
+#        echo "DEL ${DEV_MACADDR} ${DEV_PRIORITY}" > /proc/$DEV_SWITCH/device_control
+#    fi
+#
+#    i=`expr $i + 1`
+#done
+
+######################################
+# QoS Ethernet Port Priority
+######################################
+#
+# Format:
+# TX|RX (limit port 0) (limit port 1) (limit port 2) (limit port 3) (limit port 4) (limit port 5) (limit port 6)
+#
+
+if [ $PORT_PRIORITY_ENABLE -eq 1 ]; then
+
+if [ $DEV_SWITCH = "tantos" ]; then
+    echo "TX ${PORT_TX_BW_0} ${PORT_TX_BW_1} ${PORT_TX_BW_2} ${PORT_TX_BW_3} 0 ${PORT_TX_BW_4} ${PORT_TX_BW_5}" > /proc/$DEV_SWITCH/bandwidth_control
+    echo "RX ${PORT_RX_BW_0} ${PORT_RX_BW_1} ${PORT_RX_BW_2} ${PORT_RX_BW_3} 0 ${PORT_RX_BW_4} ${PORT_RX_BW_5}" > /proc/$DEV_SWITCH/bandwidth_control
+else
+    #echo "TX ${PORT_TX_BW_0} ${PORT_TX_BW_1} ${PORT_TX_BW_2} ${PORT_TX_BW_3} 0 ${PORT_TX_BW_4}" > /proc/$DEV_SWITCH/bandwidth_control
+    echo "RX ${PORT_RX_BW_0} ${PORT_RX_BW_1} ${PORT_RX_BW_2} ${PORT_RX_BW_3} ${PORT_RX_BW_4} 0 0" > /proc/$DEV_SWITCH/bandwidth_control
+fi
+
+#
+# Format:
+# PP|FC (1|0) (1|0) (1|0) (1|0) (1|0) (1|0)
+#
+if [ $DEV_SWITCH = "tantos" ]; then
+    echo "PP ${PORT_PRIORITY_0} ${PORT_PRIORITY_1} ${PORT_PRIORITY_2} ${PORT_PRIORITY_3} 0 ${PORT_PRIORITY_4} ${PORT_PRIORITY_5}" > /proc/$DEV_SWITCH/port_control
+    echo "FC ${PORT_FLOWCON_0} ${PORT_FLOWCON_1} ${PORT_FLOWCON_2} ${PORT_FLOWCON_3} 0 ${PORT_FLOWCON_4} ${PORT_FLOWCON_5}" > /proc/$DEV_SWITCH/port_control
+else
+    echo "PP ${PORT_PRIORITY_0} ${PORT_PRIORITY_1} ${PORT_PRIORITY_2} ${PORT_PRIORITY_3} ${PORT_PRIORITY_4} 3 3" > /proc/$DEV_SWITCH/port_control
+    echo "FC ${PORT_FLOWCON_0} ${PORT_FLOWCON_1} ${PORT_FLOWCON_2} ${PORT_FLOWCON_3} ${PORT_FLOWCON_4} 1 1" > /proc/$DEV_SWITCH/port_control
+fi
+
+fi
+
+
+######################################
+# 802.1p (VLAN Priority)
+######################################
+#
+# Format:
+# VP0|VP1|VP2| ... VP7 (Priority No.)
+#
+
+if [ $stream_classification_802_1 -eq 1 ]; then
+
+i=0
+while [ "$i" -lt 8 ]
+do
+    eval VP='VP'${i}
+    eval VP_PRIORITY='$VP_PRIORITY_'${i}
+
+    echo "${VP} ${VP_PRIORITY}" > /proc/$DEV_SWITCH/8021p_control
+
+    i=`expr $i + 1`
+done
+
+fi
+
+
+######################################
+# QoS Service Priority
+######################################
+#
+# Format:
+# DM PQ0|PQ1 ... |PQ3F 2 (Priority Queue Addr.) (Queue No.)
+#
+
+if [ $dt_priority -eq 1 ]; then
+
+i=${dt_voip_start}
+echo "---- Setting VoIP Queue ----"
+while [ "$i" -le ${dt_voip_end} ]
+do
+    DSCP_VAR=`echo "$i 16 o p" | dc`
+
+    if [ $DEV_SWITCH = "tantos" ]; then
+        echo "DM ${DSCP_VAR} 3" > /proc/$DEV_SWITCH/diffserv
+    fi
+
+    i=`expr $i + 1`
+done
+
+i=${dt_signaling_start}
+echo "---- Setting signaling Queue ----"
+while [ "$i" -le ${dt_signaling_end} ]
+do
+    DSCP_VAR=`echo "$i 16 o p" | dc`
+
+    if [ $DEV_SWITCH = "tantos" ]; then
+        echo "DM ${DSCP_VAR} 2" > /proc/$DEV_SWITCH/diffserv
+    fi
+
+    i=`expr $i + 1`
+done
+
+i=${dt_management_start}
+echo "---- Setting management Queue ----"
+while [ "$i" -le ${dt_management_end} ]
+do
+    DSCP_VAR=`echo "$i 16 o p" | dc`
+
+    if [ $DEV_SWITCH = "tantos" ]; then
+        echo "DM ${DSCP_VAR} 1" > /proc/$DEV_SWITCH/diffserv
+    fi
+
+    i=`expr $i + 1`
+done
+
+i=${dt_data_start}
+echo "---- Setting data Queue ----"
+while [ "$i" -le ${dt_data_end} ]
+do
+    DSCP_VAR=`echo "$i 16 o p" | dc`
+
+    if [ $DEV_SWITCH = "tantos" ]; then
+        echo "DM ${DSCP_VAR} 0" > /proc/$DEV_SWITCH/diffserv
+    fi
+
+    i=`expr $i + 1`
+done
+
+fi
+
+
+######################################
+# QoS Application Priority (TCP/UDP)
+######################################
+#
+# Format:
+# F0|F1|F2| ... F7 (Port No.) (Priority No.)
+#
+
+if [ $APPS_OPTIMIZE_ENABLE -eq 1 ]; then
+
+i=0
+while [ "$i" -lt 8 ]
+do
+    eval F='F'${i}
+    eval APPS_SPEC_PORT_BASE='$APPS_SPEC_PORT_BASE_'${i}
+    eval APPS_PRIORITY='$APPS_PRIORITY_'${i}
+    eval APPS_COMPARE='$APPS_COMPARE_'${i}
+    eval APPS_SPEC_PORT_RANGE='$APPS_SPEC_PORT_RANGE_'${i}
+
+    if [ ${APPS_OPTIMIZE_ENABLE} -gt 0 ] && [ ${APPS_SPEC_PORT_BASE} -gt 0 ];then
+        echo "${F} ${APPS_SPEC_PORT_BASE} ${APPS_PRIORITY}" > /proc/$DEV_SWITCH/tcpudp_control
+    else
+        echo "${F} 0 0" > /proc/$DEV_SWITCH/tcpudp_control
+    fi
+
+    i=`expr $i + 1`
+done
+
+fi
+
+
+######################################
+# QoS Ether-Type Priority
+######################################
+#
+# Format:
+# ETP0|ETP1|ETP2| ... ETP7 (Ether-Type value) (Priority No.)
+#
+
+if [ $TYPE_PRIORITY_ENABLE -eq 1 ]; then
+
+i=0
+while [ "$i" -lt 8 ]
+do
+    eval ETP='ETP'${i}
+    eval TYPE_NAME='$TYPE_NAME_'${i}
+    eval TYPE_PRIORITY='$TYPE_PRIORITY_'${i}
+
+    echo "${ETP} ${TYPE_NAME} ${TYPE_PRIORITY}" > /proc/$DEV_SWITCH/ethertype_control
+
+    i=`expr $i + 1`
+done
+
+fi
+
+fi
+
+fi

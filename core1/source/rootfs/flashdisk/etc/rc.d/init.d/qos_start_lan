@@ -1,0 +1,34 @@
+#!/bin/sh
+
+if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+		. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+LAN="`/etc/rc.d/get_lan_if`"
+
+	if [ "$DIFFSERV_VIRTUAL_SERVER" = "1" ]; then
+		iptables -t mangle -A PREROUTING -i $LAN -j IMQ --todev 2
+		i=1
+		while [ "$i" -ge 1 -a "$i" -le $NATVS_NUM ]
+		do
+			eval NATVS_PTYPE='$NATVS_PTYPE'${i}
+			eval NATVS_PIP='$NATVS_PIP'${i}
+			eval NATVS_PPORT='$NATVS_PPORT'${i}
+			eval NATVS_F='$NATVS_F'${i}
+			eval NATVS_QOS_ENABLE='$NAT_QOS_ENABLE'${i}
+			if [ "$NATVS_F" = "1" -a "$NATVS_QOS_ENABLE" = "1" ]; then
+				iptables -t mangle -I PREROUTING -i $LAN -s ${NATVS_PIP} -p ${NATVS_PTYPE} --sport ${NATVS_PPORT} -j MARK --set-mark ${i}
+			fi
+			i=`expr $i + 1`
+		done
+	fi

@@ -1,0 +1,7 @@
+# System initialization.
+### commented out by ProChao, for the CPU1 core test
+::sysinit:/etc/init.d/rcS
+
+# Run gettys in standard runlevels
+#::respawn:/sbin/getty 115200 console
+::askfirst:/bin/sh

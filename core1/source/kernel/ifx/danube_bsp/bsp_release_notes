@@ -1,0 +1,11 @@
+1.0.0
+============================================================
+change to 33M PCI clock & give reset
+use level-triggered interrupt for PCI
+
+
+0.5.0
+============================================================
+Integrate new MPS driver
+Change GPTU driver solve FSC clock sync issue
+DMA bug fix for race condition of accessing share resource 

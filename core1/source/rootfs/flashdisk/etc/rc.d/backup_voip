@@ -1,0 +1,13 @@
+#!/bin/sh
+# 509151:jelly: porting voIP 2.1
+
+# 000020:jelly:start:7/27
+#cp -f /ramdisk/flash/voip.conf /ramdisk/flash/voip.conf.backup
+#/bin/gzip /ramdisk/flash/voip.conf.backup 
+#/usr/sbin/upgrade /ramdisk/flash/voip.conf.backup.gz voip 0 0
+# 000020:jelly:end
+# 509151:jelly:start
+/bin/tar -czvf /ramdisk/flash/voip.conf.tgz /flash/AmazonSipSysCfg /flash/AmazonSipUsrCfg
+/usr/sbin/upgrade /ramdisk/flash/voip.conf.tgz voip 0 0
+rm -f /ramdisk/flash/voip.conf.tgz
+# 509151:jelly:end

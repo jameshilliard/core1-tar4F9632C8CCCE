@@ -1,0 +1,39 @@
+#!/bin/sh
+
+if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+		. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+case "$1" in
+	start)
+		#start
+		shift
+		/sbin/udhcpc -b -i nas$1 -p /var/run/udhcpc$1.pid -s /etc/rc.d/udhcpc.script &
+		;;
+	stop)
+		#stop
+		shift
+		/etc/rc.d/killproc udhcpc$1
+		;;
+	restart)
+		#restart
+		shift
+		/etc/rc.d/killproc udhcpc$1
+		/sbin/udhcpc -b -i nas$1 -p /var/run/udhcpc$1.pid -s /etc/rc.d/udhcpc.script &
+		;;
+	*)
+		echo $"Usage $0 {start|stop|restart}"
+		exit 1
+esac
+
+exit $?

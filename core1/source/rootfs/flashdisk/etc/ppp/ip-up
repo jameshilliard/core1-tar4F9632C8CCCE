@@ -1,0 +1,38 @@
+#0512191:leejack:Modify wan service start up procedure
+#!/bin/sh
+# ip-up interface-name tty-device speed local-link-local-address remote-link-local-address ipparam
+
+#if [ -r /etc/rc.d/config.sh ]; then
+#	. /etc/rc.d/config.sh
+#fi
+
+if [ -r /etc/rc.conf ]; then
+	. /etc/rc.conf
+fi
+
+	if [ "`echo $2 |cut -b-3`" = "nas" ]; then
+# pppoe session
+		wan_idx="`echo $2 |cut -b4-`"
+		eval PPP_MTU='$'PPPOE${wan_idx}_MTU
+		eval PPP_DEMAND='$'PPPOE${wan_idx}_DEMAND
+	else
+# pppoa session
+		wan_idx=`grep $1 /var/run/ppp* | cut -f1 -d. | cut -f3 -d-`
+		eval PPP_MTU='$'PPPOA${wan_idx}_MTU
+		eval PPP_DEMAND='$'PPPOA${wan_idx}_DEMAND
+	fi
+#	if [ "$PPP_DEMAND" = "0" ]; then
+#		/usr/sbin/naptcfg --ADDWANIF $1
+#	fi
+    /usr/sbin/iptables -t nat -I POSTROUTING -o $1 -p tcp --tcp-flags SYN,RST SYN -m tcpmss --mss `/usr/bin/expr $PPP_MTU - 40 + 1`: -j TCPMSS --set-mss `/usr/bin/expr $PPP_MTU - 40`
+	if [ -n "$DNS1" ]; then
+       		DNS_ARG="DNS1 $DNS1"
+		if [ -n "$DNS2" ]; then
+        		DNS_ARG="$DNS_ARG DNS2 $DNS2"
+		fi
+		/usr/sbin/status_oper SET "WAN${wan_idx}_DNS_SERVER" $DNS_ARG
+	fi
+#0512191:leejack
+#	/etc/rc.d/rc.bringup_wan_services start "$wan_idx" &
+	/usr/sbin/bringup_wan_service start $wan_idx &
+

@@ -1,0 +1,39 @@
+			INSTALLING SQUASHFS
+
+The squashfs2.0-ALPHA.tar.gz file contains this file, a README file,
+an ACKNOWLEDGEMENTS file, a CHANGES file, the squashfs patch
+directories/files, and the squashfs-tools directory (mksquashfs).
+
+1. Patching the kernel
+----------------------
+
+There are seven kernel patch directories depending on your linux kernel version.
+In each directory there are patches to provide squashfs2.0 alpha release
+from a base kernel.  If your kernel version isn't listed then try the patch for
+the nearest kernel listed.
+
+To patch your kernel, cd into the top level directory, and run the "patch"
+comand, e.g. assuming linux-2.4.20
+
+%cd /usr/src/linux-2.4.20
+%patch -p1 < location-of-squashfs/linux-2.4.20/squashfs2.0-patch
+
+Where "location-of-squashfs" is the path to the squashfs2.0-ALPHA source directory.
+
+The squashfs patches patch the relevant kernel files to add configure support,
+initrd support, include files, and the squashfs directory under linux/fs/.
+Once patched, the kernel must be reconfigured, with squashfs support turned on
+(either Y/M) to ensure that inflate support is built into the kernel.  The
+squashfs kernel option can be found in the filesystems submenu of the
+configure menus.  In the 2.6.x kernels, the squashfs option is hiding in
+the new miscellaneous filesystems submenu near the bottom of the filesystems
+submenu.
+
+2. Building squashfs tools
+--------------------------
+
+The squashfs-tools directory contains the mksquashfs program.  This can be
+made by typing make.  The source files use a local copy of squashfs_fs.h
+(included in the kernel patches) allowing the tools to be made without needing
+to patch the kernel.  The program uses Large File Support
+(64 bit offsets etc.) and so a relatively recent glibc is needed.

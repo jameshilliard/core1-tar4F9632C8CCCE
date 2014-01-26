@@ -1,0 +1,29 @@
+#0512191:leejack:Modify wan service start up procedure
+#
+#!/bin/sh
+
+# ip-down interface-name tty-device speed local-link-local-address remote-link-local-address ipparam
+
+if [ -r /etc/rc.d/config.sh ]; then
+	. /etc/rc.d/config.sh
+fi
+if [ -r /etc/rc.conf ]; then
+	. /etc/rc.conf
+fi
+
+	if [ "`echo $2 |cut -b-3`" = "nas" ]; then
+# pppoe session
+		wan_idx="`echo $2 |cut -b4-`"
+		eval PPP_MTU='$'PPPOE${wan_idx}_MTU
+	else
+# pppoa session
+		wan_idx=`grep $1 /var/run/ppp* | cut -f1 -d. | cut -f3 -d-`
+		eval PPP_MTU='$'PPPOA${wan_idx}_MTU
+	fi
+   	/usr/sbin/iptables -t nat -D POSTROUTING -o $1 -p tcp --tcp-flags SYN,RST SYN -m tcpmss --mss `expr $PPP_MTU - 40 + 1`: -j TCPMSS --set-mss `expr $PPP_MTU - 40`
+
+#0512191:leejack
+#	/etc/rc.d/rc.bringup_wan_services stop $wan_idx
+	/usr/sbin/bringup_wan_service stop $wan_idx
+	/usr/sbin/bringup_dns_relay start
+

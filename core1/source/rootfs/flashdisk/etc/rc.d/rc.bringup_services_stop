@@ -1,0 +1,49 @@
+#!/bin/sh
+#000004:tc.chen 2005/06/17 add IFX_CONFIG_CLI define
+	if [ -r /etc/rc.conf ]; then
+		. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+#stop(){
+#000004:tc.chen	/etc/rc.d/init.d/cli stop		#currnetly stopped without any condition
+	if  [ "$IFX_CONFIG_WEB_SERVER" = "1" ]; then
+		if [ "$IFX_CONFIG_CLI" = "1" ]; then
+			/etc/rc.d/init.d/cli stop		#currnetly stopped without any condition
+		fi
+		/etc/rc.d/init.d/httpd stop
+	fi
+	if [ "$IFX_CONFIG_INETD" = "1" ]; then
+		killall -INT inetd
+	else
+		if  [ "$IFX_CONFIG_FTP_SERVER" = "1" ]; then
+			/etc/rc.d/init.d/ftpd stop
+		fi
+		if  [ "$IFX_CONFIG_TFTP_SERVER" = "1" ]; then
+			/etc/rc.d/init.d/tftpd stop
+		fi
+		if  [ "$IFX_CONFIG_TELNET_SERVER" = "1" ]; then
+			/etc/rc.d/init.d/telnetd stop
+		fi
+		if  [ "$IFX_CONFIG_SSH_SERVER" = "1" ]; then
+			/etc/rc.d/init.d/sshd stop
+		fi
+	fi
+	if [  "$IFX_CONFIG_SNMP_AGENT" = "1" ]; then
+		/usr/bin/killall -9 snmpd 2> /dev/null
+	fi
+	# Router Setup (RIP 1/2)
+	if  [ "$IFX_CONFIG_RIP" = "1" ]; then
+		if [ "$RDYN_STATUS" = "1" ]; then
+			/etc/rc.d/init.d/ripd stop
+		fi
+	fi
+#}

@@ -1,0 +1,35 @@
+#!/bin/sh
+# 000001:tc.chen 2005/06/07 add 802.1p and ip ptos support. rewrite all of the qos scirpts
+if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+		. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+WAN="`/etc/rc.d/get_wan_if $1`"
+# 000001:tc.chen remove start
+#if [ $DIFFSERV_DUT_VOIP = 1 ]; then
+#	VOICE_MARK=1
+#	iptables -t mangle -D PREROUTING -i $WAN -p udp -m length --length 40:160 --dport 5001: --sport 5001: -j MARK --set-mark $VOICE_MARK
+#	iptables -t mangle -D PREROUTING -i $WAN -j IMQ --todev 0
+#	iptables -t mangle -D OUTPUT -o $WAN -p udp -m length --length 40:160 --dport 5001: --sport 5001: -j IMQ --todev 1
+#fi 
+# 000001:tc.chen remove end
+
+# 000001:tc.chen start
+# upstream
+iptables -t mangle -D QOS_POSTROUTING -o $WAN -j IMQ --todev 2
+#downstram
+iptables -t mangle -D QOS_PREROUTING -i $WAN -j IMQ --todev 0
+if [ "$DIFFSERV_DUT_VOIP" = "1" ]; then
+        iptables -t mangle -D PREROUTING -i $WAN -p udp --dport 5000:6000 --sport 5000:6000 -j MARK --set-mark 0x17
+fi 
+# 000001:tc.chen end

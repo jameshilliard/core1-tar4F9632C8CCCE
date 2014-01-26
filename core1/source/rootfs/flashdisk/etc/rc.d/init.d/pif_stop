@@ -1,0 +1,32 @@
+#!/bin/sh
+# 000001:tc.chen 2005/06/07 add 802.1p and ip ptos support. rewrite all of the qos scirpts
+#509025:linmars 2005/09/02 move original vlan related script (vlan/vlan_start/vlan_start) to pif (pif/pif_start/pif_stop)
+
+#000001:tc.chen start
+if [ -r /etc/rc.d/config.sh ]; then
+        . /etc/rc.d/config.sh
+fi
+
+if [ -r /flash/rc.conf ]; then
+        . /flash/rc.conf
+fi
+
+#if [ "$vlan_enable" = "0" -a "$QOS_PRIO" = "0" ]; then
+	if [ "`/usr/sbin/status_oper GET pif status`" != "stop" ]; then 
+
+		pindex=4
+		while [ "$pindex" -gt 0 ]
+		do
+			pindex=`expr $pindex - 1`
+			ifconfig swport$pindex down
+			sleep 1
+			brctl delif br0 swport$pindex
+		done
+#509023:linmars start
+		rmmod ifx_nfext_sw_phyport
+		brctl addif br0 eth0
+#509023:linmars end
+		/usr/sbin/status_oper SET pif status stop
+	fi
+#fi
+#000001:tc.chen end

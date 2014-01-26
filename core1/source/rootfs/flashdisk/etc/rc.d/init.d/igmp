@@ -1,0 +1,27 @@
+#!/bin/sh
+
+if [ -r /etc/rc.conf ]; then
+	. /etc/rc.conf
+fi
+
+if [ -r /etc/rc.d/config.sh ]; then
+	. /etc/rc.d/config.sh
+fi
+
+case "$1" in
+	start)
+		/etc/rc.d/init.d/igmp_start 
+		;;
+	stop)
+		/etc/rc.d/init.d/igmp_stop
+		;;
+	tantos)
+		/etc/rc.d/init.d/igmp_tantos restart
+		;;
+	restart)
+		shift
+		/etc/init.d/igmp_stop
+		/etc/init.d/igmp_start
+		;;
+esac
+exit $?

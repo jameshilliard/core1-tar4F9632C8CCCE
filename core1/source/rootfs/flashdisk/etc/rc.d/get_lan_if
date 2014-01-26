@@ -1,0 +1,27 @@
+#!/bin/sh
+if [ -z "$ifconfig_lan" ]; then
+	if [ ! "$ENVLOADED" ]; then
+		if [ -r /etc/rc.conf ]; then
+			. /etc/rc.conf
+			ENVLOADED="1"
+		fi
+	fi
+
+	if [ ! "$CONFIGLOADED" ]; then
+		if [ -r /etc/rc.d/config.sh ]; then
+			. /etc/rc.d/config.sh
+			CONFIGLOADED="1"
+		fi
+	fi
+fi
+
+if  [ $IFX_CONFIG_WIRELESS -a $IFX_CONFIG_WIRELESS = "1" ]; then
+	if [ $wlan_enable = 1 ]; then
+		LAN=br0
+	else
+		LAN=$lan_interface
+	fi
+else
+	LAN=$lan_interface
+fi
+echo $LAN

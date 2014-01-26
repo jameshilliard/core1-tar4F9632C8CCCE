@@ -1,0 +1,50 @@
+#!/bin/sh
+#509025:linmars 2005/09/02 move original vlan related script (vlan/vlan_start/vlan_start) to pif (pif/pif_start/pif_stop)
+#509026:linmars 2005/09/02 add VLAN related script (vlan/vlan_start/vlan_stop)
+# 602091:jelly: 2006/02/09 fix vlan bug
+
+if [ -r /etc/rc.d/config.sh ]; then
+        . /etc/rc.d/config.sh
+fi
+
+if [ -r /flash/rc.conf ]; then
+        . /flash/rc.conf
+fi
+
+#511048:linmars start
+FUNCFILE="/etc/rc.d/init.d/vlan_common.sh"
+
+
+if [ "`/usr/sbin/status_oper GET vlan status`" = "start" ]; then
+	if [ $# -eq 1 ]; then
+		. /etc/rc.d/init.d/vlan_common.sh
+		wan_idx=$1
+		ifname=`$FUNCFILE vbridge_get_ifname $wan_idx`
+		if [ "$ifname" != "" ]; then
+			/sbin/ifconfig $ifname down
+			cfg=`$FUNCFILE vbridge_get_cfg $wan_idx`
+			/usr/sbin/vlanctl 0 $wan_idx $ifname $cfg
+		else
+			echo "ERROR!!! Invalid Interface ID: $wan_idx"
+		fi
+	else
+		pindex=4
+		while [ "$pindex" -gt 0 ]
+		do
+			pindex=`expr $pindex - 1`
+			ifconfig swport$pindex down
+			sleep 1
+		done
+		rmmod ifx_nfext_vbridge
+		/usr/sbin/status_oper SET vlan status stop
+		pindex=4
+		while [ "$pindex" -gt 0 ]
+		do
+			pindex=`expr $pindex - 1`
+			ifconfig swport$pindex up
+			sleep 1
+		done
+		/etc/rc.d/init.d/pif stop
+	fi
+fi
+#511048:linmars end

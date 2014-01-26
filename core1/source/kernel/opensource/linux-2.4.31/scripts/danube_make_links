@@ -1,0 +1,27 @@
+#!/bin/bash
+TARGET_DIR=""
+
+make_link()
+{
+	for i in `cd ${TARGET_DIR};find . `
+	do
+		echo  "${TARGET_DIR}/$i"
+		ln -s $TARGET_DIR/$i $i
+	done
+}
+
+remove_link()
+{
+	cd ../../
+	find . -type l | xargs rm -f
+	cd -	
+}
+
+TARGET_DIR=`pwd`/../../ifx/danube_bsp/
+remove_link
+make_link
+
+TARGET_DIR=`pwd`/../../ifx/os/
+make_link
+
+

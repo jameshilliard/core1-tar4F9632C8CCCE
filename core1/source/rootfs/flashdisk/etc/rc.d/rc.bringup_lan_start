@@ -1,0 +1,77 @@
+#!/bin/sh
+# 000001:tc.chen 2005/06/07 add 802.1p and ip ptos support. rewrite all of the qos scirpts
+#509143:linmars remove unnecessary script
+#060906:sharontseng add to support Atheros driver into bridge mode.
+
+echo "Env $ENVLOADED" > /dev/null
+if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+		. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+#start(){
+#509143:linmars
+#	if  [ "$IFX_VLAN_SUPPORT" = "1" ]; then
+#		/etc/rc.d/init.d/vlan start
+#	fi
+
+	/usr/sbin/brctl addbr br0
+	/usr/sbin/brctl addif br0 eth0
+	/sbin/ifconfig eth0 0.0.0.0 promisc up
+
+	if [ "$STP_Bridge_ENABLE" = "1" ]; then
+		/usr/sbin/brctl stp br0 on
+	else
+		/usr/sbin/brctl stp br0 off
+	fi
+
+	/sbin/ifconfig $lan_interface $ifconfig_lan
+
+	LAN_IP=`ifconfig $lan_interface | grep 'inet addr:' | cut -f2 -d: | cut -f1 -d' '`
+	LAN_MASK=`ifconfig $lan_interface | grep Mask: | cut -f4 -d:`
+	/usr/sbin/status_oper SET Lan1_IF_Info STATUS UP IP $LAN_IP MASK $LAN_MASK
+
+	# Setup Static Route
+	if [ -n "$staticRouteCount" -a "$staticRouteCount" -gt 0 ];then
+		i=0
+		while [ "$i" -ge 0 -a "$i" -lt $staticRouteCount ]
+		do
+			eval staticRoute='$staticRoute'${i}
+       			/sbin/route add -net ${staticRoute}
+   			#i=$(($i+1))
+			i=`expr $i + 1`
+		done
+	fi
+	if [ -f /usr/sbin/naptcfg ]; then
+		/usr/sbin/naptcfg --ADDLAN $lan_interface
+ 		/usr/sbin/naptcfg --Servicesinit
+	fi
+
+	# Start DHCP Server
+	if  [ "$IFX_CONFIG_DHCP_SERVER" = "1" ]; then
+		if [ "$lan_dhcp_mode" = "server" ]; then
+# 000002:Nirav. 
+#			if [ -f /etc/udhcpd.conf ]; then
+#				/etc/rc.d/init.d/udhcpd start
+#			fi
+			/etc/rc.d/init.d/udhcpd start
+		fi
+	fi
+
+# 000001:tc.chen remove start
+#	if  [ "$IFX_CONFIG_DIFFSERV" = "1" ]; then
+#		if [ "$QOS_ENABLE" = 1 -a "$DIFFSERV_VIRTUAL_SERVER" = "1" ]; then
+#		/etc/rc.d/init.d/qos start_lan
+#		fi
+#	fi
+# 000001:tc.chen remove end
+#}

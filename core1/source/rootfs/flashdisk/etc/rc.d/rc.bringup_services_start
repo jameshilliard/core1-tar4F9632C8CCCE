@@ -1,0 +1,128 @@
+#!/bin/sh
+#000004:tc.chen 2005/06/17 add IFX_CONFIG_CLI define
+#508191:linmars 2005/08/19 fix issue when SIP binding on br0
+#508121:linmars prototype for SNMP
+echo "Env $ENVLOADED" > /dev/null
+if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+		. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+if [ $IFX_CONFIG_INETD -a $IFX_CONFIG_INETD = "1" ]; then 
+	IFX_CONFIG_INETD="1"
+	echo "#inetd.conf" > /etc/inetd.conf
+else
+	IFX_CONFIG_INETD="0"
+fi
+
+if  [ "$IFX_CONFIG_SNMPv1" = "1" ]; then
+	IFX_CONFIG_SNMP_AGENT="1"
+elif  [ "$IFX_CONFIG_SNMPv3" = "1" ]; then
+	IFX_CONFIG_SNMP_AGENT="1"
+elif  [ "$IFX_CONFIG_DSL_MANAGEMENT" = "1" ]; then
+	IFX_CONFIG_SNMP_AGENT="1"
+fi
+
+#start(){
+#508191:linmars start
+	if [ "$SIP_ENABLE" = "1" ]; then
+		eval wan_type='$'ipoption_wan$SIP_IF
+		case "$wan_type" in
+		[Bb][Rr][Ii][Dd][Gg][Ee])
+			killall ifxsip
+			sleep 1
+        		export WAN="`/etc/rc.d/get_lan_if`"
+        		/usr/sbin/ifxsip &
+			;;
+		*)
+			;;
+		esac
+	fi
+#508191:linmars end 
+	# start HTTP server 
+#000004:tc.chen	/etc/rc.d/init.d/cli start		#currnetly started without any condition
+	if  [ "$IFX_CONFIG_WEB_SERVER" = "1" ]; then
+#000004:tc.chen start
+		if [ "$IFX_CONFIG_CLI" = "1" ]; then
+			/etc/rc.d/init.d/cli start		#currnetly started without any condition
+		fi
+#000004:tc.chen end
+		if [ "$WEB_WAN_ENABLE" = "1" -o "$WEB_LAN_ENABLE" = "1" ]; then
+			#165001:henryhsu:20050809:modify for web login fail	
+			#/etc/rc.d/init.d/httpd start
+			/etc/rc.d/init.d/httpd check
+			#165001
+		fi
+	fi
+	if [ "$IFX_CONFIG_INETD" = "1" ]; then
+		#start inetd superserver
+		/etc/init.d/inetd start
+	else
+		# Start tftp Server
+		if  [ "$IFX_CONFIG_TFTP_SERVER" = "1" ]; then
+			if [ "$TFTP_WAN_ENABLE" = "1" -o "$TFTP_LAN_ENABLE" = "1" ]; then 
+				/etc/rc.d/init.d/tftpd start
+			fi
+		fi
+
+		# Start telnet Server
+		if  [ "$IFX_CONFIG_TELNET_SERVER" = "1" ]; then
+			if [ "$TELNET_WAN_ENABLE" = "1" -o "$TELNET_LAN_ENABLE" = "1" ]; then
+				/etc/rc.d/init.d/telnetd start
+			fi
+		fi
+		# Start ssh Server
+		if  [ "$IFX_CONFIG_SSH_SERVER" = "1" ]; then
+			if [ "$SSH_WAN_ENABLE" = "1" -o "$SSH_LAN_ENABLE" = 1 ]; then
+				/etc/rc.d/init.d/sshd start &
+			fi
+		fi
+
+        	# Start ftp Server
+        	if  [ "$IFX_CONFIG_FTP_SERVER" = "1" ]; then
+	        	if [ "$FTP_WAN_ENABLE" = "1" -o "$FTP_LAN_ENABLE" = "1" ]; then
+				/etc/rc.d/init.d/ftpd start
+            		fi
+        	fi
+	fi
+
+	# Start SNMP
+	if [  "$IFX_CONFIG_SNMP_AGENT" = "1" ]; then
+		if [ -f /usr/sbin/snmpd -a "$SNMPEnable" = "1" ]; then
+# 508121:linmars start
+			SNMP_EXTRA_STRING=""
+			if [ "$SNMPEnableUDP" = "1" ]; then
+				SNMP_EXTRA_STRING=$SNMP_EXTRA_STRING + " udp:161"
+			fi
+			if [ "$SNMPEnableAAL5" = "1" ]; then
+				SNMP_EXTRA_STRING=$SNMP_EXTRA_STRING + " aal5:0." + $SNMPoAAL5Vpi + "." + $SNMPoAAL5Vci
+			fi
+			if [ "$SNMPEnableUDP" = "1" ]; then
+				SNMP_EXTRA_STRING=$SNMP_EXTRA_STRING + " cleareoc"
+			fi
+			/usr/sbin/snmpd -c /etc/snmp/snmpd.conf -p /var/run/snmpd.pid $SNMP_EXTRA_STRING
+# 508121:linmars end
+		fi
+	fi
+
+	# Router Setup (RIP 1/2)
+	if  [ "$IFX_CONFIG_RIP" = "1" ]; then
+		if [ "$RDYN_STATUS" = "1" ]; then
+			if [ -r /etc/ripd.conf ]; then
+				echo "hostname $hostname" > /etc/zebra.conf
+				/etc/rc.d/init.d/ripd start 
+			fi
+		fi
+	fi
+
+
+#}

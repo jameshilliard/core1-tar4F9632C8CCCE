@@ -1,0 +1,36 @@
+#!/bin/sh
+
+#Sumedh - Script to enable IGMP Snooping through startup scripts and web
+#FIXME - bridge br0 is assumed to be up and running
+
+if [ -r /etc/rc.conf ]; then
+	. /etc/rc.conf
+fi
+
+if [ -r /etc/rc.d/config.sh ]; then
+	. /etc/rc.d/config.sh
+fi
+
+if [ "$IGMP_ENABLE" = "1" ]; then
+	if [ "$IGMP_MODE" = "1" ]; then
+		#get current wanif name coressponding to wanif no.
+		uIntf=`/etc/rc.d/get_wan_if $IGMP_WAN_INTF`
+
+		if [ "$IGMP_LEAVE_LATENCY_ENABLE" = "1" ]; then
+			/sbin/insmod iproxyd mode="$IGMP_MODE" uIf="$uIntf" LeaveLatency="$IGMP_MAXRESPTIME" 
+		else
+			/sbin/insmod iproxyd mode="$IGMP_MODE" uIf="$uIntf" LeaveLatency="10"
+		fi
+		echo "IGMP Proxy enabled!"
+	fi
+	if [ "$IGMP_MODE" = "2" ]; then
+		if [ "$IGMP_LEAVE_LATENCY_ENABLE" = "1" ]; then
+			/sbin/insmod iproxyd mode="$IGMP_MODE" LeaveLatency="$IGMP_MAXRESPTIME"
+		else
+			/sbin/insmod iproxyd mode="$IGMP_MODE" LeaveLatency="10"
+		fi
+
+		/etc/init.d/pif start
+		echo "IGMP Snooping enabled!"
+	fi
+fi

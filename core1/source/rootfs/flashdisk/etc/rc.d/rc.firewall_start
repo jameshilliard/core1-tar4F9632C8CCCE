@@ -1,0 +1,51 @@
+#!/bin/sh
+
+if [ -r /etc/rc.conf ]; then
+        . /etc/rc.conf
+fi
+
+
+if [ $FIREWALL_ENABLE -a $FIREWALL_ENABLE = "1" ]; then
+	/usr/sbin/naptcfg --FW 1
+else
+	/usr/sbin/naptcfg --FW 0
+fi
+
+if [ $ENABLE_HACKER_ATTACK_PROTECT -a $ENABLE_HACKER_ATTACK_PROTECT = "1" ]; then
+	/usr/sbin/naptcfg --DoS 1
+else
+	/usr/sbin/naptcfg --DoS 0
+fi
+
+if [ $ALLOW_PING_THE_GW -a $ALLOW_PING_THE_GW = "1" ]; then
+	/usr/sbin/naptcfg --WPing 1
+else
+	/usr/sbin/naptcfg --WPing 0
+fi
+
+if [ $DISCARD_PING_FROM_WAN_SIDE -a $DISCARD_PING_FROM_WAN_SIDE = "1" ]; then
+	/usr/sbin/naptcfg --Ping 1
+else
+	/usr/sbin/naptcfg --Ping 0
+fi
+
+if [ "$MAC_control" = "1" ]; then
+	/usr/sbin/naptcfg --MACFilter 1
+elif [ "$MAC_control" = "2" ]; then
+	/usr/sbin/naptcfg --MACFilter 2
+else
+	/usr/sbin/naptcfg --MACFilter 0
+fi
+
+if [ "$PF_STATUS" = "1" ]; then
+	/usr/sbin/naptcfg --PacketFilter 1
+else
+	/usr/sbin/naptcfg --PacketFilter 0
+fi
+
+
+if [ "$SERVERS_ACL_ENABLE" = "1" ]; then
+	/usr/sbin/naptcfg --ServicesACL 1
+else
+	/usr/sbin/naptcfg --ServicesACL 0
+fi

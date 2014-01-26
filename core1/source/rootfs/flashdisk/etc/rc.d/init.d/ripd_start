@@ -1,0 +1,47 @@
+#!/bin/sh
+
+#start() {
+#	/usr/sbin/zebra -f /etc/zebra.conf -d
+# Generate Settings for some demands from system configuration file
+#/etc/ripd.conf
+if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+		. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+if [ ! -s /etc/ripd.conf ]; then
+	case $RDYN_RTSUPPLYMODE in
+	     0) echo "RIP down";;
+                1) cat /ramdisk/etc/ripd.v1.conf > /etc/ripd.conf ;;
+                2) cat /ramdisk/etc/ripd.v2.conf > /etc/ripd.conf ;;
+                *) cat /ramdisk/etc/ripd.v1.conf > /etc/ripd.conf ;;
+        esac
+	echo "#<< route_dynamic" >> /etc/ripd.conf
+	case $RDYN_RTLISTENMODE in
+	     1) echo "ip rip receive version 1" >> /etc/ripd.conf ;;
+	     2) echo "ip rip receive version 2" >> /etc/ripd.conf ;;
+	     3) echo "ip rip receive version 1 2" >> /etc/ripd.conf ;;
+	     *) echo "#ip rip receive version 1 2" >> /etc/ripd.conf ;;
+	esac
+	case $RDYN_RTSUPPLYMODE in
+                1) echo "ip rip send version 1" >> /etc/ripd.conf ;;
+                2) echo "ip rip send version 2" >> /etc/ripd.conf ;;
+                *) echo "#ip rip send version 1 2" >> /etc/ripd.conf ;;
+	esac
+	echo "#>> route_dynamic" >> /etc/ripd.conf
+	echo '!' >> /etc/ripd.conf
+fi
+
+	naptcfg --Servicesinit
+	sleep 30
+	/usr/sbin/ripd -f /etc/ripd.conf -d
+#}

@@ -1,0 +1,23 @@
+#!/bin/sh
+# 000001:tc.chen 2005/06/07 add 802.1p and ip ptos support. initial version
+# 509141:tc.chen 2005/09/14 add cpe-dsl-mib feature
+# 511101:leejack 2005/11/10 modify oam bringup
+
+# this script is called form amazon_autoboot_daemon when adsl showtime
+
+if [ -r /etc/rc.d/config.sh ]; then
+	. /etc/rc.d/config.sh
+fi
+
+# 511101:leejack
+#/etc/rc.d/init.d/oam restart
+/usr/sbin/bringup_oam restart &
+
+/etc/rc.d/init.d/qos_rate_update
+
+#509141:tc.chen added start
+if [ "$IFX_CONFIG_CPE_DSL_MIB" = "1" ]; then
+#send BootTrap message to CO
+killall -SIGUSR2 snmpd
+fi
+#509141:tc.chen added end

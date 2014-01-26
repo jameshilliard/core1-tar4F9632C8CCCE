@@ -1,0 +1,8 @@
+1. Place this directory in source/user/ifx/ of your platform source code.
+2. You can modify your configuration files so as to include this directory for your build.
+3. Once building is done, module ip_turbonat.o gets created in /lib/modules in root file system.
+4. You have to modify your init scripts so as to load the module, at the time of your bootup.
+5. For this feature to work, Turbonat feature has to be enabled in the kernel. Configuring this option in the kernel,
+is necessary, but not sufficient. The feature works, only when this module is loaded.
+6. This feature might have some side effects. Please refer LXDB 1.1 User manual for complete details.
+

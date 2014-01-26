@@ -1,0 +1,184 @@
+#!/bin/sh
+# 000001:tc.chen 2005/06/07 add 802.1p and ip ptos support. rewrite all of the qos scirpts
+# 507141:tc.chen 2005/07/14 add netfilter module enable/disable code 
+
+# 000001:tc.chen start
+if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+		. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+iptables -t mangle -D PREROUTING -j QOS_PREROUTING
+iptables -t mangle -D POSTROUTING -j QOS_POSTROUTING
+
+if [ "$DIFFSERV_DUT_VOIP" = "1" ]; then
+	iptables -t mangle -D OUTPUT -p udp --dport 5000:6000 --sport 5000:6000 -j IMQ --todev 1
+fi
+# 000001:tc.chen end
+
+#Public variable
+#if [ $ipoption_wan -a $ipoption_wan = DHCPC ]; then
+#	WAN=$wan_interface
+#elif [  $ipoption_wan -a $ipoption_wan = FIXED ]; then
+#	if [ $ATM_PROTOCOL -a $ATM_PROTOCOL = "rfc2684" ]; then
+#		WAN=nas0
+#	elif [ $ATM_PROTOCOL -a $ATM_PROTOCOL = "clip" ]; then
+#		WAN=atm0
+#	fi
+#elif [  $ipoption_wan -a $ipoption_wan = PPPOE ]; then
+#	WAN=ppp0
+#elif [  $ipoption_wan -a $ipoption_wan = PPPOA ]; then
+#	WAN=ppp0
+#elif [  $ipoption_wan -a $ipoption_wan = PPTP ]; then
+#	WAN=ppp0
+#elif [  $ipoption_wan -a $ipoption_wan = TR037 ]; then
+#	if [ $TR037_PROTO -a $TR037_PROTO = "PPPOA" ]; then
+#		WAN=ppp0
+#	else
+#		WAN=nas0
+#	fi
+#else
+#	WAN=$wan_interface
+#fi
+#
+#if  [ $IFX_CONFIG_WIRELESS -a $IFX_CONFIG_WIRELESS = "1" ]; then
+#	if [ $wlan_enable = 1 ]; then
+#		LAN=br0
+#	else
+#		LAN=$lan_interface
+#	fi
+#else
+#	LAN=$lan_interface
+#fi
+#
+#
+# totol downstream bandwidth in KBytes
+#DOWNSTREAM=24000
+#
+# total upstream bandwidth in KBytes
+#UPSTREAM=1000
+#
+# Transform KBytes into bits
+#MEASURE=`expr 1024 \* 8`
+#
+# Ration in %
+#BANDWIDTH_RATIO=80
+#DOWNSTREAM=`expr $DOWNSTREAM \* $MEASURE \* $BANDWIDTH_RATIO / 100`
+#UPSTREAM=`expr $UPSTREAM \* $MEASURE \* $BANDWIDTH_RATIO / 100`
+#
+# IMQ device name
+DS_DEV_0=imq0
+DS_DEV_1=imq1
+DS_DEV_2=imq2
+#
+#start() {
+#	insmod imq numdevs=3
+#	if [ $DIFFSERV_VIRTUAL_SERVER -a $DIFFSERV_VIRTUAL_SERVER = 1 ]; then
+#		LAN_OTHER_CLASS_ID=`expr $NATVS_NUM + 2`
+#		# incoming packets from LAN
+#		iptables -t mangle -A PREROUTING -i $LAN -j IMQ --todev 2
+#		tc qdisc add dev $DS_DEV_2 handle 1: root htb default $LAN_OTHER_CLASS_ID
+#		tc class add dev $DS_DEV_2 parent 1: classid 1:1 htb rate ${UPSTREAM}
+#		tc class add dev $DS_DEV_2 parent 1:1 handle 1:${LAN_OTHER_CLASS_ID} htb rate ${NATVS_MIN_BW}
+#		tc qdisc add dev $DS_DEV_2 parent 1:${LAN_OTHER_CLASS_ID} handle ${LAN_OTHER_CLASS_ID}0: pfifo limit 20
+#		others_bandwidth=0
+#		i=1
+#		while [ "$i" -ge 1 -a "$i" -le $NATVS_NUM ]
+#		do
+#			eval NATVS_PTYPE='$NATVS_PTYPE'${i}
+#			eval NATVS_PIP='$NATVS_PIP'${i}
+#			eval NATVS_PPORT='$NATVS_PPORT'${i}
+#			eval NATVS_F='$NATVS_F'${i}
+#			eval NATVS_QOS_ENABLE='$NAT_QOS_ENABLE'${i}
+#			eval NATVS_MIN_BW='$NATVS_MIN_BW'${i}
+#			eval NATVS_MAX_BW='$NATVS_MAX_BW'${i}
+#			if [ $NATVS_F -eq 1 -a $NATVS_QOS_ENABLE -eq 1 ]; then
+#				LAN_CLASS_ID=`expr $i + 1`
+#				others_bandwidth=`expr $others_bandwidth + $NATVS_MIN_BW`
+#				NATVS_MIN_BW=`expr $UPSTREAM \* $NATVS_MIN_BW / 100`
+#				NATVS_MAX_BW=`expr $UPSTREAM \* $NATVS_MAX_BW / 100`
+#				iptables -t mangle -I PREROUTING -i $LAN -s ${NATVS_PIP} -p ${NATVS_PTYPE} --sport ${NATVS_PPORT} -j MARK --set-mark ${i}
+#				tc class add dev $DS_DEV_2 parent 1:1 classid 1:${LAN_CLASS_ID} htb rate ${NATVS_MIN_BW} ceil ${NATVS_MAX_BW}
+#				tc qdisc add dev $DS_DEV_2 parent 1:${LAN_CLASS_ID} handle ${LAN_CLASS_ID}0: pfifo limit 20
+#				tc filter add dev $DS_DEV_2 parent 1: protocol ip handle ${i} fw classid 1:${LAN_CLASS_ID}
+#			fi
+#
+#			i=$(($i+1))
+#		done
+#		others_bandwidth=`expr 100 - $others_bandwidth`
+#		others_bandwidth=`expr $UPSTREAM \* $others_bandwidth / 100`
+#		tc class add dev $DS_DEV_2 parent 1:1 classid 1:${LAN_OTHER_CLASS_ID} htb rate ${others_bandwidth} ceil ${UPSTREAM}
+#		tc qdisc add dev $DS_DEV_2 parent 1:${LAN_OTHER_CLASS_ID} handle ${LAN_OTHER_CLASS_ID}0: pfifo limit 20
+#		ifconfig $DS_DEV_2 up
+#	fi
+#	if [ $DIFFSERV_DUT_VOIP = 1 ]; then
+#		# Incoming packets from WAN
+#		SERVICE_VOIP=10
+#		SERVICE_OTHERS=90
+#		VOICE_MIN_BW=`expr $DOWNSTREAM \* $SERVICE_VOIP / 100`
+#		VOICE_MAX_BW=`expr $VOICE_MIN_BW \* 2`
+#		VOICE_QLENGTH=30
+#		VOICE_MARK=1
+#		OTHER_MIN_BW=`expr $DOWNSTREAM \* $SERVICE_OTHERS / 100`
+#		OTHER_MAX_BW=$DOWNSTREAM
+#		OTHER_QLENGTH=50
+#		iptables -t mangle -A PREROUTING -i $WAN -p udp -m length --length 40:160 --dport 5001: --sport 5001: -j MARK --set-mark $VOICE_MARK
+#		iptables -t mangle -A PREROUTING -i $WAN -j IMQ --todev 0
+#		tc qdisc add dev $DS_DEV_0 handle 1: root htb default 3
+#		tc class add dev $DS_DEV_0 parent 1:0 classid 1:1 htb rate ${DOWNSTREAM}
+#		tc class add dev $DS_DEV_0 parent 1:1 classid 1:2 htb rate ${VOICE_MIN_BW} ceil ${VOICE_MAX_BW}
+#		tc class add dev $DS_DEV_0 parent 1:1 classid 1:3 htb rate ${OTHER_MIN_BW} ceil ${OTHER_MAX_BW}
+#		tc qdisc add dev $DS_DEV_0 parent 1:2 handle 20: pfifo limit $VOICE_QLENGTH
+#		tc qdisc add dev $DS_DEV_0 parent 1:3 handle 30: pfifo limit $OTHER_QLENGTH
+#		tc filter add dev $DS_DEV_0 parent 1: protocol ip handle $VOICE_MARK fw classid 1:2
+#		ifconfig $DS_DEV_0 up
+#		iptables -t mangle -A OUTPUT -o $WAN -p udp -m length --length 40:160 --dport 5001: --sport 5001: -j IMQ --todev 1
+#		tc qdisc add dev $DS_DEV_1 handle 1: root dsmark indices 2
+#		tc class change dev $DS_DEV_1 parent 1:0 classid 1:1 dsmark mask 0x0 value 0xb8
+#		ifconfig $DS_DEV_1 up
+#	fi 
+#}
+#
+#stop() {
+# 000001:tc.chen start
+#	iptables -t mangle -F
+# 000001:tc.chen end
+	ifconfig $DS_DEV_0 down
+	ifconfig $DS_DEV_1 down
+	ifconfig $DS_DEV_2 down
+	tc qdisc del $DS_DEV_0 root
+	tc qdisc del $DS_DEV_1 root
+	tc qdisc del $DS_DEV_2 root
+	rmmod imq
+
+# 000001:tc.chen start
+/usr/sbin/status_oper SET qos status stop
+# 000001:tc.chen end
+
+# 507141:tc.chen update netfilter flag to enable/disable netfilter module
+/usr/sbin/naptcfg --UpdateNetfilterFlag
+#}
+#
+#case "$1" in
+#	start)
+#		start
+#		;;
+#	stop)
+#		stop
+#		;;
+#	restart)
+#		stop
+#		start
+#		;;
+#esac
+#
+#exit $?

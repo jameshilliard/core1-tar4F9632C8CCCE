@@ -1,0 +1,403 @@
+#!/bin/sh
+# 000001:tc.chen 2005/06/07 add 802.1p and ip ptos support. rewrite all of the qos scirpts
+# 508181:tc.chen 2005/08/18 support routing mode for sip
+# 509071:tc.chen 2005/09/07 Reduced flash writing time
+# 509151:jelly 2005/09/15 Porting VoIP 2.1
+#510041:linmars add condition in order to prevent unnecessay process
+# 510271:jelly:2005/10/27 fix the failure for reading voip.conf from flash
+#511101:leejack 2005/11/10 Modify bringup wan method.
+#605151:leejack 2006/05/15 Remove for danube
+#603294:linjoe 2006/03/29 enable the vinax vdsl2 system (driver,firmware and library)
+#6090401:hsur 2006/0904 add openswan
+#611301:sharont Add to detect CPU0 or CPU1
+
+/bin/mount -a
+#611301:sharont add start
+# Core0 or Core1
+CPUID=""
+CPUID=`uname -r | cut -f2 -d"_"`
+
+if [ -z "$CPUID" -o "$CPUID" = "Core0" ]; then
+#611301:sharont add end
+
+# create ramdisk for write
+
+# copy system setting from flash to ram
+mount -t ramfs -o nr_inodes=1k,mode=770 /dev/ram /ramdisk
+cp -ar /ramdisk_copy/* /ramdisk
+/bin/mount -t ramfs /dev/ram /dev
+mv /ramdisk/dev/* /dev
+
+#echo "" > /tmp/system_status
+#608211:linmars
+#/usr/sbin/mknod_util danube-port /dev/danube-port 
+
+#605151:leejack /usr/sbin/swreset &
+# winder 2006/06/20
+#if [ "`/bin/dd if=/dev/mtd/4 bs=4 count=1`" = "sqsh" ] ; then
+#	echo "Mount ADSL Firmware Now"
+#	/bin/mount /firmware
+#fi
+
+/usr/sbin/read_img sysconfig /ramdisk/flash/rc.conf.gz
+/bin/gunzip /ramdisk/flash/rc.conf.gz
+
+if [ $? -ne 0 ]; then
+	echo "FLASH config file missing/corrupted!"
+	/usr/sbin/upgrade /etc/rc.conf.gz sysconfig 0 0
+	/usr/sbin/read_img sysconfig /ramdisk/flash/rc.conf.gz
+	/bin/gunzip /ramdisk/flash/rc.conf.gz
+fi
+
+if [ -r /etc/rc.d/config.sh ]; then
+	. /etc/rc.d/config.sh
+fi
+
+if [ "$IFX_CONFIG_VOIP" = "1" ]; then
+	/usr/sbin/read_img voip /ramdisk/flash/voip.conf.tgz 
+	/bin/tar -xvzf /ramdisk/flash/voip.conf.tgz
+	if [ $? -ne 0 ]; then
+		/bin/rm -f /ramdisk/flash/voip.conf.tgz
+	fi
+fi
+
+# 605302:fchang.removed.start
+#/usr/sbin/read_img fwdiag /ramdisk/flash/fwdiag.gz
+#/bin/gunzip /ramdisk/flash/fwdiag.gz
+#if [ $? -ne 0 ]; then
+#        /bin/touch /ramdisk/flash/fwdiag
+#        /bin/rm -f /ramdisk/flash/fwdiag.gz
+#fi
+# 605302:fchang.removed.end
+
+# 605302:fchang.removed.start
+#if  [ "$IFX_CONFIG_WIRELESS" = "1" ]; then
+#	/usr/sbin/read_img calibration /ramdisk/flash/calibration.gz
+#	/bin/gunzip /ramdisk/flash/calibration.gz
+#	if [ $? -ne 0 ]; then
+#		/bin/touch /ramdisk/flash/calibration
+#		/bin/rm -f /ramdisk/flash/calibration.gz
+#	fi
+#fi
+# 605302:fchang.removed.end
+
+# Read Configuration File
+if [ -r /etc/rc.conf ]; then
+        . /etc/rc.conf
+fi
+
+#605151:leejack /etc/rc.d/rc.bringup_adsl_start
+
+# Create the passwd file
+touch /ramdisk/flash/passwd
+i=0
+while [ $i -lt $passFileLineCount ]
+do
+	eval passVar='$passFileLineCount'$i
+	echo $passVar >> /ramdisk/flash/passwd
+	i=`expr $i + 1`
+done
+
+insmod ifx_nfext_core
+insmod ifx_nfext_ppp
+
+#/etc/snmp/snmpd.conf
+if [ "$IFX_CONFIG_SNMPv1" = "1" ]; then
+	IFX_CONFIG_SNMP_AGENT="1"
+elif [ "$IFX_CONFIG_SNMPv3" = "1" ]; then
+	IFX_CONFIG_SNMP_AGENT="1"
+elif [ "$IFX_CONFIG_DSL_MANAGEMENT" = "1" ]; then
+	IFX_CONFIG_SNMP_AGENT="1"
+fi
+
+if [ "$IFX_CONFIG_SNMP_AGENT" = "1" ]; then
+	echo "######  V1 Configuration  ######" > /etc/snmp/snmpd.conf
+	echo "rocommunity $SNMProcommunity" >> /etc/snmp/snmpd.conf
+	echo "rwcommunity $SNMPrwcommunity" >> /etc/snmp/snmpd.conf
+	if [ "$SNMPTrapEnable" = "1" ]; then
+		echo "trapsink	$SNMPTrapIP	$SNMPTrapCommunity	$SNMPTrapPort " >> /etc/snmp/snmpd.conf
+		echo "trapcommunity $SNMPTrapCommunity " >> /etc/snmp/snmpd.conf
+		echo "authtrapenable 1"	>> /etc/snmp/snmpd.conf
+	else	
+		echo "#trapsink	$SNMPTrapIP	$SNMPTrapCommunity	$SNMPTrapPort " >> /etc/snmp/snmpd.conf
+	fi
+	echo "######  V3 Configuration  ######" >> /etc/snmp/snmpd.conf
+fi
+
+#if [ "$IFX_CONFIG_NAPT" = "1" -a "$IFX_CONFIG_ALGS" = "1" ]; then
+#	if [ ! -c /dev/rtsp_dev ]
+#	then
+#		/bin/mknod /dev/rtsp_dev c 100 0
+#		/bin/mknod /dev/rtsp_conn_dev c 231 0
+#		/bin/mknod /dev/sip_dev c 233 0
+#		/bin/mknod /dev/sip_conn_dev c 234 0
+#	fi
+#	/sbin/modprobe.sh ip_nat_rtsp
+#	/sbin/modprobe.sh ip_conntrack_rtsp
+#	/sbin/modprobe.sh ifx_ip_nat_sip
+#	if [ -f /usr/sbin/nfappcfg ]; then
+#		/usr/sbin/nfappcfg init
+#	fi
+#fi
+
+if [ "$IFX_VLAN_SUPPORT" = "1" ]; then
+	/bin/mknod /dev/vlan c 69 0
+fi
+
+#/bin/mknod /dev/adm6996 c 69 0
+#/sbin/insmod admmod
+
+# Setup lo Interface Addresses
+/sbin/ifconfig lo 127.0.0.1 netmask 255.0.0.0
+
+echo 1 > /proc/sys/net/ipv4/ip_forward
+
+# Setup Hostname
+echo "127.0.0.1	localhost.localdomain localhost" > /etc/hosts
+echo "`echo $ifconfig_lan |cut -f1 -d ' '` ${hostname} `echo ${hostname} |cut -f1 -d.`" >> /etc/hosts
+
+if [ -f /usr/sbin/dnrd ]; then
+	rm -rf /ramdisk/etc/dnrd
+	mkdir /ramdisk/etc/dnrd
+#06091901:hsur  for DNS bug
+	/usr/sbin/bringup_dns_relay start
+fi
+
+if [ -f /bin/hostname ]; then
+	/bin/hostname localhost.localdomain
+fi
+
+# Start System log
+if [ -f /sbin/syslogd ]; then
+	echo "Bringing up syslog"
+	/sbin/syslogd -s 50 -b 2
+fi
+
+# Start Kernel log
+if [ -f /sbin/klogd ]; then
+	echo "Bringing up klogd"
+	/sbin/klogd &
+fi
+
+if [ "$IFX_CONFIG_NAPT" = "1" ]; then
+if [ -f /usr/sbin/naptcfg ]; then
+	       	/usr/sbin/naptcfg --FWinit
+      		/usr/sbin/naptcfg --NAPTinit
+		/usr/sbin/naptcfg --MACFilterinit
+		/usr/sbin/naptcfg --PacketFilterinit
+ 		/usr/sbin/naptcfg --ServicesACLinit
+fi
+#	if [ "$IFX_CONFIG_ALGS" = "1" ]; then
+#		/usr/sbin/nfappcfg rtsp enable 
+#	fi
+fi
+
+#/usr/sbin/brctl addbr $lan_interface
+#/usr/sbin/brctl addif $lan_interface eth0
+#/usr/sbin/brctl stp $lan_interface off
+#/sbin/ifconfig eth0 down
+#/sbin/ifconfig eth1 down
+
+#winder 2006/06/20
+if  [ "$IFX_CONFIG_SWMOD" = "1" ]; then
+	insmod /lib/modules/swmod.o
+fi
+/etc/rc.d/rc.bringup_lan start
+
+#611301:sharont add start
+if  [ "$IFX_CONFIG_WIRELESS" = "1" ]; then
+    if [ "$CPUID" = "Core0" ]; then
+        insmod  /lib/modules/mps0_wifi.oo
+    else
+        insmod /lib/modules/wlan.o
+        insmod /lib/modules/ath_hal.o
+        insmod /lib/modules/ath_rate_atheros.o
+        insmod /lib/modules/ath_dfs.o
+        insmod /lib/modules/ath_pci.o
+        sleep 1
+        insmod /lib/modules/wlan_wep.o
+        insmod /lib/modules/wlan_tkip.o
+        insmod /lib/modules/wlan_ccmp.o
+        insmod /lib/modules/wlan_xauth.o
+        insmod /lib/modules/wlan_acl.o
+        insmod /lib/modules/wlan_scan_ap.o
+        sleep 1
+    fi
+
+    if [ "$wlan_enable" = "1" ]; then
+        MAC_ADDR_BEGIN=`ifconfig eth0 | grep HWaddr | cut -f11 -d" "`
+        WIRELESS_MAC_ADDR=`echo $MAC_ADDR_BEGIN|/usr/sbin/next_macaddr 0 |tr -d ':'`
+        WLAN_PHY=wifi0
+
+        ifconfig $WLAN_PHY hw ether $WIRELESS_MAC_ADDR
+        sleep 5
+        /usr/sbin/wlanconfig ath0 create wlandev wifi0 wlanmode ap
+        sleep 1
+        /etc/rc.d/rc.bringup_wireless start
+
+        /sbin/ifconfig $WLAN_PHY 0.0.0.0
+        sleep 1
+        /sbin/ifconfig $wlan_interface 0.0.0.0
+        sleep 1
+        /usr/sbin/brctl addif br0 $wlan_interface
+        sleep 1
+    fi
+fi
+#611301:sharont add end
+
+# 000001:tc.chen start
+#
+# Setup QOS
+#
+if  [ "$IFX_CONFIG_QOS" = "1" ]; then
+	/etc/rc.d/init.d/qos init 
+fi
+
+# 000001:tc.chen move end
+
+#if [ "$IFX_CONFIG_CLIP" = "1" ]; then
+#	/usr/sbin/atmarpd -b -l /dev/null
+#fi
+
+if [ "$IFX_CONFIG_NAPT" = "1" ]; then
+	/etc/rc.d/rc.firewall start
+	/usr/sbin/naptcfg --VSinit 
+	/usr/sbin/naptcfg --PMinit 
+	/usr/sbin/naptcfg --DMZinit 
+	/usr/sbin/naptcfg --VS 1
+	/usr/sbin/naptcfg --PM 1
+
+	if [ "$DMZ_ENABLE" = "1" ]; then
+		/usr/sbin/naptcfg --DMZ 1
+	fi
+
+	if [ "$ipnat_enable" = "1" ]; then
+		/usr/sbin/naptcfg --NAPT 1
+	else
+		/usr/sbin/naptcfg --NAPT 0
+	fi
+
+# 000001:tc.chen move start
+#	#
+#	# Setup QOS
+#	#
+#	if  [ "$IFX_CONFIG_DIFFSERV" = "1" ]; then
+#		if [ "$QOS_ENABLE" = "1" ]; then
+#			/etc/rc.d/init.d/qos init &
+#		fi
+#	fi
+# 000001:tc.chen move end
+
+fi
+
+if [ "$IFX_CONFIG_VOIP" = "1" ]; then
+        #turn voip relay on
+        /usr/sbin/voip_relay 1
+        # create vinetic device node
+        /bin/mknod /dev/vin10 c 230 10
+        /bin/mknod /dev/vin11 c 230 11
+        /bin/mknod /dev/vin12 c 230 12
+        /bin/mknod /dev/vin13 c 230 13
+        /bin/mknod /dev/vin14 c 230 14
+        /sbin/insmod /lib/drv_vinetic
+#508181:tc.chen 
+	if [ "$SIP_ENABLE" = "1" ]; then
+#winder 2006/06/22
+        	export WAN=eth1
+        	/usr/sbin/ifxsip &
+	fi
+fi
+
+# Run some demand likes http, telnetd
+/etc/rc.d/rc.bringup_services start
+
+if [  "$ipnat_enable" = "1" -a "$IFX_CONFIG_ALGS" = "1" ]; then
+	/etc/rc.d/init.d/algs start
+fi
+
+#/usr/sbin/bringup_wan start &
+
+/usr/sbin/version.sh -r&
+
+#609151:linmars merge IGMP Proxy/Snooping from Santosh
+#iptables -A PREROUTING -t nat -d 224.0.0.0/240.0.0.0 -j ACCEPT
+#iptables -A INPUT -d 224.0.0.0/240.0.0.0 -j ACCEPT
+#iptables -A OUTPUT -d 224.0.0.0/240.0.0.0 -j ACCEPT
+#iptables -A FORWARD -d 224.0.0.0/240.0.0.0 -j ACCEPT
+
+#VDSL2 start 603294:linjoe -start
+if [ "$IFX_CONFIG_VDSL2" = "1" ]; then
+echo "--VDSL2 Pre Initialization   --"
+/ifx/vdsl2/vdsl2_init_pre.sh
+echo "---VDSL2 Post Initialization --"
+/ifx/vdsl2/vdsl2_init_post.sh
+ifconfig eth2 up
+brctl addif br0 eth2
+fi
+#VDSL2 end 603294:linjoe -end
+
+#TAPIv3 start 60808001:hsur
+if [ "$IFX_CONFIG_TAPIv3" = "1" ]; then
+        /bin/mknod /dev/vmmc10  c 245 10
+        /bin/mknod /dev/vmmc11  c 245 11
+        /bin/mknod /dev/vmmc12  c 245 12
+        /bin/mknod /dev/vmmc13  c 245 13
+        /bin/mknod /dev/vmmc14  c 245 14
+        /bin/mknod /dev/vmmc15  c 245 15
+        /bin/mknod /dev/vmmc16  c 245 16
+        /bin/mknod /dev/vmmc17  c 245 17
+        /bin/mknod /dev/vmmc18  c 245 18
+	#winder 20061023
+        insmod /opt/ifx/bin/drv_tapi
+        insmod /opt/ifx/bin/drv_vmmc major=245
+        # 608161:fchang.added.start For FXO Demo
+        /bin/mknod /dev/cpc5621 c 220 11
+        /bin/mknod /dev/dus10 c 240 10
+        /bin/mknod /dev/dus11 c 240 11
+        /bin/mknod /dev/dus12 c 240 12
+        # insmod /usr/drivers/drv_duslic
+        # insmod /usr/drivers/danube_daa
+        # 608161:fchang.added.end
+fi
+#TAPIv3 End
+# 606301:fchang.added.start To create the nodes for MPS driver
+#/etc/rc.d/install_mps_devices.sh start
+# 606301:fchang.added.end
+
+#609121:linmars
+echo "nameserver 168.95.1.1" > /etc/resolv.conf
+
+# Winder, remove, already created in dev.tar.bz2 
+# mknod /dev/sda b 8 0
+# mknod /dev/sda1 b 8 1
+
+else
+
+    if [ -r /etc/rc.d/config.sh ]; then
+        . /etc/rc.d/config.sh
+    fi
+
+    insmod  /lib/modules/mps1_wifi.oo
+
+    if  [ "$IFX_CONFIG_WIRELESS" = "1" ]; then
+        insmod /lib/modules/wlan.o
+        insmod /lib/modules/ath_hal.o
+        insmod /lib/modules/ath_rate_atheros.o
+        insmod /lib/modules/ath_dfs.o
+        insmod /lib/modules/ath_pci.o
+        sleep 1
+        insmod /lib/modules/wlan_wep.o
+        insmod /lib/modules/wlan_tkip.o
+        insmod /lib/modules/wlan_ccmp.o
+        insmod /lib/modules/wlan_xauth.o
+        insmod /lib/modules/wlan_acl.o
+        insmod /lib/modules/wlan_scan_ap.o
+        sleep 1
+    fi
+fi # CPUID
+
+echo
+echo "+----------------------------------------+"
+echo "| Linux/MIPS on TWINPASS by Infineon CPE |"
+echo "+----------------------------------------+"
+

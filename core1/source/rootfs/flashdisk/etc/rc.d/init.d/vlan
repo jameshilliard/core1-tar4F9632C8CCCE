@@ -1,0 +1,23 @@
+#!/bin/sh
+#511048:linmars fix VLAN configuration fail issue
+
+case "$1" in
+	start)
+		shift
+		/etc/rc.d/init.d/vlan_start $@
+		;;
+	stop)
+		shift
+		/etc/rc.d/init.d/vlan_stop $@
+		;;
+	restart)
+		shift
+#511048:linmars start
+		/etc/rc.d/init.d/vlan_stop $@
+		/etc/rc.d/init.d/vlan_start $@
+#511048:linmars end
+		;;
+	*)
+		echo $"Usage $0 {start|stop|restart}"
+		exit 1
+esac

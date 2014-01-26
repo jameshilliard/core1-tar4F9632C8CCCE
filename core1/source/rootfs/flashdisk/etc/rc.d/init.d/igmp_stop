@@ -1,0 +1,7 @@
+#!/bin/sh
+
+#Sumedh - Script to disable IGMP Snooping through startup scripts and web
+
+/sbin/rmmod iproxyd
+/etc/init.d/pif stop
+	

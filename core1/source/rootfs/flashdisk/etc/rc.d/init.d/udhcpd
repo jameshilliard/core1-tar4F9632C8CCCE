@@ -1,0 +1,39 @@
+#!/bin/sh
+
+if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+		. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+case "$1" in
+	start)
+		#start
+		. /etc/rc.d/init.d/udhcpd_start
+		;;
+	stop)
+		#stop
+		/etc/rc.d/killproc udhcpd
+        rm -rf /ramdisk/etc/udhcpd.conf
+		. /etc/init.d/inetd_start
+		;;
+	restart)
+		#restart
+		/etc/rc.d/killproc udhcpd
+	    rm -rf /ramdisk/etc/udhcpd.conf
+		. /etc/rc.d/init.d/udhcpd_start
+		;;
+	*)
+		echo $"Usage $0 {start|stop|restart}"
+		exit 1
+esac
+
+exit $?

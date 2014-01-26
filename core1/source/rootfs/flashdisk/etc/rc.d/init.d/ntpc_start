@@ -1,0 +1,24 @@
+#!/bin/sh
+
+if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+		. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+#start() {
+	if [ "$NTP_Client" = "1" -a -n "$NTP_Server" ]; then
+			if [ "`/usr/sbin/status_oper GET net_client status | cut -b-5`" != "start" ]; then 
+			/usr/sbin/ntpclient -s -h $NTP_Server -o $time_minute_offset &
+			/usr/sbin/status_oper SET net_client status start$1	
+			fi
+		fi
+#}

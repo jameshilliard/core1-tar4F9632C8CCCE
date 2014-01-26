@@ -1,0 +1,11 @@
+#!/bin/sh
+
+cp -f /ramdisk/flash/rc.conf /tmp
+cd /tmp
+/bin/gzip rc.conf
+# 000001:Nirav
+#/usr/sbin/upgrade rc.conf.gz sysconfig 0 1
+# tc.chen
+/usr/sbin/upgrade rc.conf.gz sysconfig 0 0
+/bin/rm -f rc.conf.gz
+cd -

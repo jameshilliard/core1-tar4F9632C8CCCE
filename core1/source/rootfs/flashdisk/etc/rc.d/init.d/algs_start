@@ -1,0 +1,48 @@
+#!/bin/sh
+if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+	. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+#start() {
+#	if [ $ALG_H323 = "1" ]; then
+#		/sbin/modprobe.sh ip_nat_h323
+#	fi
+#	if [ $ALG_PPTP = "1" ]; then
+#		/sbin/modprobe.sh ip_nat_proto_gre
+#		/sbin/modprobe.sh ip_conntrack_proto_gre
+#		/sbin/modprobe.sh ip_nat_pptp
+#	fi
+#	if [ $ALG_RTSP = "1" ]; then
+#		/usr/sbin/nfappcfg rtsp enable 
+#	else 
+#		/usr/sbin/nfappcfg rtsp disable
+#	fi
+#	if [ $ALG_CUSEEME = "1" ]; then
+#		/sbin/modprobe.sh ip_nat_cuseeme
+#	fi
+#	if [ $ALG_MMS = "1" ]; then
+#		/sbin/modprobe.sh ip_nat_mms
+#	fi
+#	if [ $ALG_FTP = "1" ]; then
+#		/sbin/modprobe.sh ip_nat_ftp
+#	fi
+#	if [ $ALG_TALK = "1" ]; then
+#		/sbin/modprobe.sh ip_nat_talk
+#	fi
+	if [ $ALG_SIP_ENABLE = "1" ]; then
+		/usr/sbin/nfappcfg sip enable -tudp -p$ALG_SIP_PORT -b
+	else
+		/usr/sbin/nfappcfg sip disable
+	fi
+#}
+

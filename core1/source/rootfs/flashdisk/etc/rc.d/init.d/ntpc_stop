@@ -1,0 +1,26 @@
+#!/bin/sh
+
+if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+		. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+#stop() {
+	# get ntpclient process id and kill it
+	if [ "`/usr/sbin/status_oper GET net_client status | cut -b6-`" = "$1" ]; then 
+	for NTP_Client_PID in `ps|grep ntpclient |cut -c 1-5`
+	do
+		kill -9 $NTP_Client_PID
+	done
+			/usr/sbin/status_oper SET net_client status stop
+	fi
+#}

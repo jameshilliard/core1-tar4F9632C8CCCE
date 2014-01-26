@@ -1,0 +1,83 @@
+/* System */
+//#define IFX_CONFIG_NTPCLIENT
+#define IFX_CONFIG_SYSTEM_LOG
+
+/* ADSL */
+
+//winder
+//#define IFX_CONFIG_ADSL_FIRMWARE_LOADER 
+//#define IFX_CONFIG_OAM
+//050705:fchang #define IFX_CONFIG_OAM_FULL
+//#define IFX_CONFIG_OAM_F5
+
+/* ADSL Firmware */
+//#define IFX_ADSL_FIRMWARE       M_0512.bin
+
+/* uncomment below will free ROOT Filesystem 190KB */
+//#define IFX_ADSL_FIRMWARE_IN_ROOTFS
+
+//#define IFX_ADSL_INFO
+
+/* WAN */
+//#define IFX_CONFIG_MULTIPLE_VCCS
+//#define IFX_CONFIG_PPPOE
+//#define IFX_CONFIG_PPPOE_RELAY
+//#define IFX_CONFIG_PPPOA
+//#define IFX_CONFIG_RFC2684
+//#define IFX_CONFIG_CLIP
+//#define IFX_CONFIG_DHCP_CLIENT
+
+//#define IFX_CONFIG_DHCP_RELAY
+//#define IFX_CONFIG_DDNS
+//#define IFX_CONFIG_DNSRELAY
+
+/* LAN */
+//#define IFX_CONFIG_DHCP_SERVER
+
+/*ADM6996L VLAN support */
+//050705:fchang #define IFX_VLAN_SUPPORT
+
+/* WIRELESS */
+//#define IFX_CONFIG_WIRELESS
+
+/* SNMP */
+//#define IFX_CONFIG_SNMPv1
+//#define IFX_CONFIG_SNMPv3
+
+/* FIREWALL & NAPT */
+//#define IFX_CONFIG_EBTABLES
+//#define IFX_CONFIG_FIREWALL
+//#define IFX_CONFIG_NAPT
+//#define IFX_CONFIG_ALGS
+
+/* Route */
+//#define IFX_CONFIG_RIP
+
+/* Management */
+//#define IFX_CONFIG_INETD
+//#define IFX_CONFIG_WEB_SERVER
+//#define IFX_CONFIG_CLI 
+//#define IFX_CONFIG_TFTP_SERVER
+//#define IFX_CONFIG_TELNET_SERVER
+//#define IFX_CONFIG_FTP_SERVER
+//#define IFX_CONFIG_SSH_SERVER
+//#define IFX_CONFIG_DSL_MANAGEMENT
+//#define IFX_CONFIG_ILMI
+
+/* Voice */
+//#define IFX_CONFIG_VOIP
+
+/* QoS */
+//#define IFX_CONFIG_QOS
+//#define IFX_CONFIG_DIFFSERV
+//#define IFX_CONFIG_QOS_PRIORITY_QUEUE
+//#define IFX_CONFIG_QOS_IPPTOS
+//#define IFX_CONFIG_QOS_8021P
+
+//#define IFX_CONFIG_IGMPPROXY
+//#define IFX_CONFIG_IGMPSNOOP
+//#define IFX_CONFIG_IGMPv3
+
+#define IFX_CONFIG_DEBUG
+
+#define IFX_CONFIG_SYSSTAT

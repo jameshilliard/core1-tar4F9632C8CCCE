@@ -1,0 +1,38 @@
+#!/bin/sh
+
+if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+		. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+#stop(){
+	if  [ $IFX_CONFIG_DHCP_SERVER -a $IFX_CONFIG_DHCP_SERVER = "1" ]; then
+#		if [ "$lan_dhcp_mode" = "server" ]; then
+#			/etc/rc.d/killproc udhcpd
+#		fi
+		#Changed by Nirav.
+		if [ -f /var/run/udhcpd.pid ] ; then
+			/etc/init.d/udhcpd stop
+		fi
+	fi
+
+	if [ -f /usr/sbin/naptcfg ]; then
+		/usr/sbin/naptcfg --DELLAN $lan_interface
+	fi
+	LAN="`/etc/rc.d/get_lan_if`"
+	if  [ "$IFX_CONFIG_DIFFSERV" = "1" ]; then
+		if [ "$QOS_ENABLE" = 1 -a "$DIFFSERV_VIRTUAL_SERVER" = "1" ]; then
+		/etc/rc.d/init.d/qos stop_lan
+		fi
+	fi
+	/usr/sbin/status_oper SET Lan1_IF_Info STATUS DOWN
+#}

@@ -1,0 +1,23 @@
+#!/bin/bash
+TARGET_DIR=""
+remove_link()
+{
+	for i in `cd ${TARGET_DIR};find . `
+	do
+		if [ -L $i  ]
+		then
+			echo  "$i"
+			rm -fr $i
+		fi
+	done
+}
+#Amazon BSP
+TARGET_DIR=`pwd`/../../ifx/bsp/
+remove_link
+#Danube BSP
+TARGET_DIR=`pwd`/../../ifx/danube_bsp/
+remove_link
+#OS
+TARGET_DIR=`pwd`/../../ifx/os/
+remove_link
+

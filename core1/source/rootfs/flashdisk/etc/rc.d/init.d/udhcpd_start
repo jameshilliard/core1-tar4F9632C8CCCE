@@ -1,0 +1,42 @@
+#!/bin/sh
+
+if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+		. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+#start
+		if [ "$IFX_CONFIG_DHCP_SERVER" -a "$IFX_CONFIG_DHCP_SERVER" = "1" ]; then
+	
+			echo "option dns `echo $ifconfig_lan |cut -f1 -d' '`"> /etc/udhcpd.conf
+			echo "interface $lan_interface" >> /etc/udhcpd.conf
+			echo "start `echo $ifconfig_lan | cut -f1-3 -d.`.$dhcps_IP_Start">> /etc/udhcpd.conf
+			echo "end `echo $ifconfig_lan | cut -f1-3 -d.`.$dhcps_IP_End">> /etc/udhcpd.conf
+			echo "max_leases $dhcps_Max_Leases">> /etc/udhcpd.conf
+			echo "auto_time 300">> /etc/udhcpd.conf #Added by Nirav.
+			echo "option subnet `echo $ifconfig_lan |cut -f3 -d' '`">> /etc/udhcpd.conf
+			echo "option router `echo $ifconfig_lan |cut -f1 -d' '`">> /etc/udhcpd.conf
+			if [ "$dhcps_Domain" = "0" ]; then
+				echo "#option domain">> /etc/udhcpd.conf
+			else
+				echo "option domain $dhcps_Domain">> /etc/udhcpd.conf
+			fi
+			echo "option lease $dhcps_Lease">> /etc/udhcpd.conf
+			
+			# Setup Hostname
+			echo "127.0.0.1	localhost.localdomain localhost"> /etc/hosts
+			echo "`echo $ifconfig_lan |cut -f1 -d' '` ${hostname} `echo ${hostname} |cut -f1 -d'.'`">> /etc/hosts
+			hostname localhost.localdoman
+			#/usr/sbin/udhcpd &		#By Nirav. udhcpd now runs from inetd
+			#Added by Nirav.
+			/etc/init.d/inetd_start
+		fi

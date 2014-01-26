@@ -1,0 +1,287 @@
+#!/bin/sh
+
+if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+		. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+HOSTAPD_CONF="/etc/hostapd.conf"
+
+if [ $WLAN_8021X_KEYLEN = "0" ]; then
+    WLAN_1X_KEYLEN="5"
+else
+    WLAN_1X_KEYLEN="13"
+fi
+
+#setup wireless
+if  [ "$IFX_CONFIG_WIRELESS" = "1" ]; then
+	if [ "$wlan_enable" = "1" ]; then
+#        iwpriv $wlan_interface mode $WLAN_OP_RATE
+
+        # ex. 152 --> 0x98 --> 10011000
+        #                     hi      lo
+        # bit 7: ar (adoptive radio)
+        # bit 6: xr ()
+        # bit 5: WMM based cwmin/cwmax/burst tuning
+        # bit 4: burst
+        # bit 3: ff (fast frames)
+        # bit 2: compression
+        # bit 1: turbo (Dynamic turbo)
+        # bit 0: static turbo G (disabled)
+#        iwpriv $wlan_interface abolt 152
+        iwconfig $wlan_interface rate auto
+
+        if [ $WLAN_POWER_LEVEL = "0" ]; then
+            iwconfig $wlan_interface txpower 4.1dBm
+        elif [ $WLAN_POWER_LEVEL = "1" ]; then
+            iwconfig $wlan_interface txpower 6.6dBm
+        elif [ $WLAN_POWER_LEVEL = "2" ]; then
+            iwconfig $wlan_interface txpower 8.7dBm
+        elif [ $WLAN_POWER_LEVEL = "3" ]; then
+            iwconfig $wlan_interface txpower 10.9dBm
+        elif [ $WLAN_POWER_LEVEL = "4" ]; then
+            iwconfig $wlan_interface txpower 12.9dBm
+        fi
+		iwconfig $wlan_interface nick $WLAN_AP_NAME
+		iwconfig $wlan_interface essid $WLAN_ESSID
+		iwconfig $wlan_interface channel $WLAN_CHANNEL
+		iwpriv $wlan_interface hide_ssid $WLAN_HIDDEN_SSID
+		iwpriv $wlan_interface shpreamble $WLAN_PREAMBLE
+		iwpriv $wlan_interface bintval $WLAN_BEACON_INTERVAL
+		iwconfig $wlan_interface rts $WLAN_RTS
+		iwconfig $wlan_interface frag $WLAN_FTS
+		iwpriv $wlan_interface dtim_period $WLAN_DTIM_INTERVAL
+		iwpriv $wlan_interface protmode $WLAN_CTS
+
+        echo "interface=$wlan_interface" > $HOSTAPD_CONF
+        echo "bridge=$lan_interface" >> $HOSTAPD_CONF
+        echo "driver=madwifi" >> $HOSTAPD_CONF
+        echo "logger_syslog=0" >> $HOSTAPD_CONF
+        echo "logger_syslog_level=0" >> $HOSTAPD_CONF
+        echo "logger_stdout=0" >> $HOSTAPD_CONF
+        echo "logger_stdout_level=0" >> $HOSTAPD_CONF
+        echo "debug=2" >> $HOSTAPD_CONF
+        echo "ssid=$WLAN_ESSID" >> $HOSTAPD_CONF
+
+        case "$WLAN_ENCRY_TYPE" in
+            1)
+                #open sys
+    			iwconfig $wlan_interface key off
+    			iwpriv $wlan_interface wpa 0
+                echo "ieee8021x=0" >> $HOSTAPD_CONF
+                case $WLAN_AUTH_TYPE in
+                    [12])
+                        iwpriv $wlan_interface authmode $WLAN_AUTH_TYPE
+                    ;;
+                    3)
+                        iwpriv $wlan_interface authmode 4
+                    ;;
+                esac
+                ;;
+
+            [23])
+                #shared
+                case $WLAN_AUTH_TYPE in
+                    [12])
+                        iwpriv $wlan_interface authmode $WLAN_AUTH_TYPE
+                    ;;
+                    3)
+                        iwpriv $wlan_interface authmode 4
+                    ;;
+                esac
+
+    			iwconfig $wlan_interface key restricted
+    			iwconfig $wlan_interface key [1] "$WLAN_KEY1"
+    			iwconfig $wlan_interface key [2] "$WLAN_KEY2"
+    			iwconfig $wlan_interface key [3] "$WLAN_KEY3"
+    			iwconfig $wlan_interface key [4] "$WLAN_KEY4"
+    			iwconfig $wlan_interface key [$WLAN_KEY_USED]
+    			iwpriv $wlan_interface wpa 0
+                echo "ieee8021x=0" >> $HOSTAPD_CONF
+                ;;
+
+            4)
+                #standard 802.1x
+                iwpriv $wlan_interface authmode 3
+    			iwconfig $wlan_interface key off
+    			iwpriv $wlan_interface wpa 0
+    			echo "auth_algs=2" >> $HOSTAPD_CONF
+                echo "ieee8021x=1" >> $HOSTAPD_CONF
+                echo "wep_key_len_unicast=$WLAN_1X_KEYLEN" >> $HOSTAPD_CONF
+                echo "wep_key_len_broadcast=$WLAN_1X_KEYLEN" >> $HOSTAPD_CONF
+                echo "own_ip_addr=$WLAN_OWN_IP" >> $HOSTAPD_CONF
+                echo "auth_server_addr=$WLAN_RADIUS_SERVER_IP" >> $HOSTAPD_CONF
+                echo "auth_server_port=$WLAN_RADIUS_SERVER_PORT" >> $HOSTAPD_CONF
+                echo "auth_server_shared_secret=$WLAN_RADIUS_SERVER_SECRET" >> $HOSTAPD_CONF
+                echo "wpa=0" >> $HOSTAPD_CONF
+                ;;
+
+            5)
+                #tkip
+                iwpriv $wlan_interface authmode 5
+                iwpriv $wlan_interface wpa 1
+
+                if [ $WLAN_AUTH_TYPE = "4" ]; then
+                    #wpa-tls
+                    echo "ieee8021x=1" >> $HOSTAPD_CONF
+                    echo "own_ip_addr=$WLAN_OWN_IP" >> $HOSTAPD_CONF
+                    echo "auth_server_addr=$WLAN_RADIUS_SERVER_IP" >> $HOSTAPD_CONF
+                    echo "auth_server_port=$WLAN_RADIUS_SERVER_PORT" >> $HOSTAPD_CONF
+                    echo "auth_server_shared_secret=$WLAN_RADIUS_SERVER_SECRET" >> $HOSTAPD_CONF
+                    echo "wpa=1" >> $HOSTAPD_CONF
+                    echo "wpa_key_mgmt=WPA-EAP" >> $HOSTAPD_CONF
+                    echo "wpa_pairwise=TKIP" >> $HOSTAPD_CONF
+                    if [ $WLAN_GKEY_ENABLE = "1" ]; then
+                        echo "wpa_group_rekey=$WLAN_GKEY_RENEWAL" >> $HOSTAPD_CONF
+                    else
+                        echo "wpa_group_rekey=3600" >> $HOSTAPD_CONF
+                    fi
+
+                elif [ $WLAN_AUTH_TYPE = "5" ]; then
+                    #wpa-psk
+                    echo "wpa=1" >> $HOSTAPD_CONF
+
+                    if [ $WLAN_ISPASSPHRASE = "1" ]; then
+                        echo "wpa_passphrase=$WLAN_PSK" >> $HOSTAPD_CONF
+                    else
+                        echo "wpa_psk=$WLAN_PSK" >> $HOSTAPD_CONF
+                    fi
+
+                    echo "wpa_key_mgmt=WPA-PSK" >> $HOSTAPD_CONF
+                    echo "wpa_pairwise=TKIP" >> $HOSTAPD_CONF
+                    if [ $WLAN_GKEY_ENABLE = "1" ]; then
+                        echo "wpa_group_rekey=$WLAN_GKEY_RENEWAL" >> $HOSTAPD_CONF
+                    else
+                        echo "wpa_group_rekey=3600" >> $HOSTAPD_CONF
+                    fi
+                fi
+                ;;
+
+            6)
+                #aes
+
+                if [ $WLAN_AUTH_TYPE = "4" ]; then
+                    #wpa-tls
+                    iwpriv $wlan_interface wpa 1
+                    echo "ieee8021x=1" >> $HOSTAPD_CONF
+                    echo "own_ip_addr=$WLAN_OWN_IP" >> $HOSTAPD_CONF
+                    echo "auth_server_addr=$WLAN_RADIUS_SERVER_IP" >> $HOSTAPD_CONF
+                    echo "auth_server_port=$WLAN_RADIUS_SERVER_PORT" >> $HOSTAPD_CONF
+                    echo "auth_server_shared_secret=$WLAN_RADIUS_SERVER_SECRET" >> $HOSTAPD_CONF
+                    echo "wpa=1" >> $HOSTAPD_CONF
+                    echo "wpa_key_mgmt=WPA-EAP" >> $HOSTAPD_CONF
+                    echo "wpa_pairwise=TKIP" >> $HOSTAPD_CONF
+                    if [ $WLAN_GKEY_ENABLE = "1" ]; then
+                        echo "wpa_group_rekey=$WLAN_GKEY_RENEWAL" >> $HOSTAPD_CONF
+                    else
+                        echo "wpa_group_rekey=3600" >> $HOSTAPD_CONF
+                    fi
+
+                elif [ $WLAN_AUTH_TYPE = "5" ]; then
+                    #wpa-psk
+                    iwpriv $wlan_interface wpa 1
+                    echo "wpa=1" >> $HOSTAPD_CONF
+
+                    if [ $WLAN_ISPASSPHRASE = "1" ]; then
+                        echo "wpa_passphrase=$WLAN_PSK" >> $HOSTAPD_CONF
+                    else
+                        echo "wpa_psk=$WLAN_PSK" >> $HOSTAPD_CONF
+                    fi
+
+                    echo "wpa_key_mgmt=WPA-PSK" >> $HOSTAPD_CONF
+                    echo "wpa_pairwise=CCMP" >> $HOSTAPD_CONF
+                    if [ $WLAN_GKEY_ENABLE = "1" ]; then
+                        echo "wpa_group_rekey=$WLAN_GKEY_RENEWAL" >> $HOSTAPD_CONF
+                    else
+                        echo "wpa_group_rekey=3600" >> $HOSTAPD_CONF
+                    fi
+
+                elif [ $WLAN_AUTH_TYPE = "6" ]; then
+                    #wpa2-tls
+                    iwpriv $wlan_interface wpa 2
+                    echo "ieee8021x=1" >> $HOSTAPD_CONF
+                    echo "own_ip_addr=$WLAN_OWN_IP" >> $HOSTAPD_CONF
+                    echo "auth_server_addr=$WLAN_RADIUS_SERVER_IP" >> $HOSTAPD_CONF
+                    echo "auth_server_port=$WLAN_RADIUS_SERVER_PORT" >> $HOSTAPD_CONF
+                    echo "auth_server_shared_secret=$WLAN_RADIUS_SERVER_SECRET" >> $HOSTAPD_CONF
+                    echo "wpa=2" >> $HOSTAPD_CONF
+                    echo "wpa_key_mgmt=WPA-EAP" >> $HOSTAPD_CONF
+                    echo "wpa_pairwise=CCMP" >> $HOSTAPD_CONF
+                    if [ $WLAN_GKEY_ENABLE = "1" ]; then
+                        echo "wpa_group_rekey=$WLAN_GKEY_RENEWAL" >> $HOSTAPD_CONF
+                    else
+                        echo "wpa_group_rekey=3600" >> $HOSTAPD_CONF
+                    fi
+
+                elif [ $WLAN_AUTH_TYPE = "7" ]; then
+                    #wpa2-psk
+                    iwpriv $wlan_interface wpa 2
+                    echo "wpa=2" >> $HOSTAPD_CONF
+
+                    if [ $WLAN_ISPASSPHRASE = "1" ]; then
+                        echo "wpa_passphrase=$WLAN_PSK" >> $HOSTAPD_CONF
+                    else
+                        echo "wpa_psk=$WLAN_PSK" >> $HOSTAPD_CONF
+                    fi
+
+                    echo "wpa_key_mgmt=WPA-PSK" >> $HOSTAPD_CONF
+                    echo "wpa_pairwise=CCMP" >> $HOSTAPD_CONF
+                    if [ $WLAN_GKEY_ENABLE = "1" ]; then
+                        echo "wpa_group_rekey=$WLAN_GKEY_RENEWAL" >> $HOSTAPD_CONF
+                    else
+                        echo "wpa_group_rekey=3600" >> $HOSTAPD_CONF
+                    fi
+                fi
+                ;;
+
+            7)
+                #tkip and aes mixed-mode
+                iwpriv $wlan_interface wpa 2
+
+                if [ $WLAN_AUTH_TYPE = "6" ]; then
+                    #wpa2-tls
+                    echo "ieee8021x=1" >> $HOSTAPD_CONF
+                    echo "own_ip_addr=$WLAN_OWN_IP" >> $HOSTAPD_CONF
+                    echo "auth_server_addr=$WLAN_RADIUS_SERVER_IP" >> $HOSTAPD_CONF
+                    echo "auth_server_port=$WLAN_RADIUS_SERVER_PORT" >> $HOSTAPD_CONF
+                    echo "auth_server_shared_secret=$WLAN_RADIUS_SERVER_SECRET" >> $HOSTAPD_CONF
+                    echo "wpa=2" >> $HOSTAPD_CONF
+                    echo "wpa_key_mgmt=WPA-EAP" >> $HOSTAPD_CONF
+                    echo "wpa_pairwise=TKIP CCMP" >> $HOSTAPD_CONF
+                    if [ $WLAN_GKEY_ENABLE = "1" ]; then
+                        echo "wpa_group_rekey=$WLAN_GKEY_RENEWAL" >> $HOSTAPD_CONF
+                    else
+                        echo "wpa_group_rekey=3600" >> $HOSTAPD_CONF
+                    fi
+
+                elif [ $WLAN_AUTH_TYPE = "7" ]; then
+                    #wpa2-psk
+                    echo "wpa=2" >> $HOSTAPD_CONF
+
+                    if [ $WLAN_ISPASSPHRASE = "1" ]; then
+                        echo "wpa_passphrase=$WLAN_PSK" >> $HOSTAPD_CONF
+                    else
+                        echo "wpa_psk=$WLAN_PSK" >> $HOSTAPD_CONF
+                    fi
+
+                    echo "wpa_key_mgmt=WPA-PSK" >> $HOSTAPD_CONF
+                    echo "wpa_pairwise=TKIP CCMP" >> $HOSTAPD_CONF
+                    if [ $WLAN_GKEY_ENABLE = "1" ]; then
+                        echo "wpa_group_rekey=$WLAN_GKEY_RENEWAL" >> $HOSTAPD_CONF
+                    else
+                        echo "wpa_group_rekey=3600" >> $HOSTAPD_CONF
+                    fi
+                fi
+                ;;
+        esac  #case WLAN_ENCRY_TYPE
+    fi
+fi

@@ -1,0 +1,52 @@
+#!/bin/sh
+if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+	. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+fi
+
+if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+fi
+
+
+#stop() {
+#	if [ "$ALG_H323" = "1" ]; then
+#		/sbin/rmmod.sh ip_nat_h323
+#		/sbin/rmmod.sh ip_conntrack_h323
+#	fi
+#	if [ "$ALG_PPTP" = "1" ]; then
+#        	/sbin/rmmod.sh ip_nat_proto_gre
+#	        /sbin/rmmod.sh ip_conntrack_proto_gre
+#		/sbin/rmmod.sh ip_nat_pptp
+#		/sbin/rmmod.sh ip_conntrack_pptp
+#	fi
+#	if [ "$ALG_RTSP" = "1" ]; then
+#		/usr/sbin/nfappcfg rtsp disable 
+#	fi
+#	if [ "$ALG_CUSEEME" = "1" ]; then
+#		/sbin/rmmod.sh ip_nat_cuseeme
+#		/sbin/rmmod.sh ip_conntrack_cuseeme
+#	fi
+#	if [ "$ALG_MMS" = "1" ]; then
+#		/sbin/rmmod.sh ip_nat_mms
+#		/sbin/rmmod.sh ip_conntrack_mms
+#	fi
+#	if [ "$ALG_FTP" = "1" ]; then
+#		/sbin/rmmod.sh ip_nat_ftp
+#		/sbin/rmmod.sh ip_conntrack_ftp
+#	fi
+#	if [ "$ALG_TALK" = "1" ]; then
+#		/sbin/rmmod.sh ip_nat_talk
+#		/sbin/rmmod.sh ip_conntrack_talk
+#	fi
+	if [ "$ALG_SIP_ENABLE" = "1" ]; then
+		/usr/sbin/nfappcfg sip disable
+
+	fi
+#}
+

@@ -1,0 +1,48 @@
+#0512191:leejack:Modify wan service start up procedure
+#!/bin/sh
+
+[ -z "$1" ] && echo "Error: should be called from udhcpc" && exit 1
+
+RESOLV_CONF="/etc/resolv.conf"
+[ -n "$broadcast" ] && BROADCAST="broadcast $broadcast"
+[ -n "$subnet" ] && NETMASK="netmask $subnet"
+wan_idx=`echo $interface |cut -b 4-`
+
+case "$1" in
+	deconfig)
+		/sbin/ifconfig $interface 0.0.0.0
+#0512191:leejack
+#		/etc/rc.d/rc.bringup_wan_services stop $wan_idx
+		/usr/sbin/bringup_wan_service stop $wan_idx
+		;;
+    	renew)
+		echo "IP renewing..."
+		;;
+	bound)
+		/sbin/ifconfig $interface $ip $BROADCAST $NETMASK
+
+		if [ -n "$router" ] ; then
+			route del default gw 0.0.0.0 dev $interface
+			for i in $router ; do
+				route add default gw $i dev $interface
+			done
+		fi
+		if [ -r /etc/rc.conf ]; then
+			. /etc/rc.conf
+		fi
+		count=1
+		for i in $dns ; do
+        		DNS_ARG="$DNS_ARG DNS$count $i"
+			count=`expr $count + 1`
+		done
+		/usr/sbin/status_oper SET "WAN${wan_idx}_DNS_SERVER" $DNS_ARG
+#0512191:leejack start
+#		/etc/rc.d/rc.bringup_wan_services stop $wan_idx
+#		/etc/rc.d/rc.bringup_wan_services start $wan_idx &
+		/usr/sbin/bringup_wan_service stop $wan_idx
+		/usr/sbin/bringup_wan_service start $wan_idx &
+#0512191:leejack end
+		;;
+esac
+
+exit 0

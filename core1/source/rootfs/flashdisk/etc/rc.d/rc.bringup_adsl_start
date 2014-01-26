@@ -1,0 +1,74 @@
+#!/bin/sh
+
+# 090602:fchang 2005/09/06 Add the script file name to be executed by auto-boot-daemon by default upon FW diagnostic
+# 608231:linmars 2006/08/23 Fix ADSL autoselect mode issue
+
+#if [ ! "$ENVLOADED" ]; then
+	if [ -r /etc/rc.conf ]; then
+		. /etc/rc.conf
+		ENVLOADED="1"
+	fi
+#fi
+
+#if [ ! "$CONFIGLOADED" ]; then
+	if [ -r /etc/rc.d/config.sh ]; then
+		. /etc/rc.d/config.sh
+		CONFIGLOADED="1"
+	fi
+#fi
+
+case $ADSL_MODE in
+	0)
+		# 608231:linmars
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin all &
+		;;
+	1)
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin 1a &
+		;;
+	2)
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin 1b &
+		;;
+	3)
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin 3a &
+		;;
+	4)
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin 3b &
+		;;
+	5)
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin 5a &
+		;;
+	6)
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin 5b &
+		;;
+	7)
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin 3I &
+		;;
+	8)
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin 3J &
+		;;
+	9)
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin 3M &
+		;;
+	10)
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin 5I &
+		;;
+	11)
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin 5J &
+		;;
+	12)
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin 5M &
+		;;
+	13)
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin b_all &
+		;;
+	14)
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin m_all &
+		;;
+	15)
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin mb_all &
+		;;
+	*)
+		# 608231:linmars
+		/root/danube_autoboot_daemon /firmware/modemhwe.bin all &
+		;;
+esac
